@@ -20,6 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import midcaiLogo from "@assets/Logo Mark_Red_1762255088379.png";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -63,7 +64,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <img 
-            src="/attached_assets/Logo Mark_Red_1762253485171.png" 
+            src={midcaiLogo} 
             alt="MIDCAI Logo" 
             className="h-20 w-20 mb-4"
           />

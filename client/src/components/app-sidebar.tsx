@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import midcaiLogo from "@assets/Logo Mark_Red_1762255088379.png";
 
 const menuItems = [
   {
@@ -92,7 +93,7 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
       <SidebarHeader className="p-6 pb-4">
         <div className="flex items-center gap-3">
           <img 
-            src="/attached_assets/Logo Mark_Red_1762253485171.png" 
+            src={midcaiLogo} 
             alt="MIDCAI Logo" 
             className="h-10 w-10"
           />

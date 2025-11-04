@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Building, MapPin, Phone, Mail, Globe } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import midcaiLogo from "@assets/Logo Mark_Red_1762255088379.png";
 
 export default function CompanySettings() {
   const { data: company, isLoading } = useQuery({
@@ -117,7 +118,7 @@ export default function CompanySettings() {
         <CardContent>
           <div className="flex items-center gap-6">
             <img 
-              src="/attached_assets/Logo Mark_Red_1762253485171.png" 
+              src={midcaiLogo} 
               alt="MIDCAI Logo" 
               className="h-24 w-24"
             />
