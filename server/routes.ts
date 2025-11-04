@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserProfileSchema, insertLeaveSchema, insertHolidaySchema, insertReimbursementSchema, insertPayrollSchema } from "@shared/schema";
 import bcrypt from "bcryptjs";
+import { emailService } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication Routes
@@ -213,7 +214,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = insertLeaveSchema.parse(req.body);
       const leave = await storage.createLeave(validated);
       
-      // In production, send email notification here
+      // Send email notification to manager
+      try {
+        const employee = await storage.getUserProfile(leave.userId);
+        const manager = leave.managerId ? await storage.getUserProfile(leave.managerId) : null;
+        const leaveType = await storage.getAllLeaveTypes();
+        const leaveTypeName = leaveType.find(lt => lt.id === leave.leaveTypeId)?.name || 'Leave';
+        
+        if (employee && manager && manager.email) {
+          await emailService.sendLeaveApplicationNotification(
+            `${employee.firstName} ${employee.lastName}`,
+            manager.email,
+            leaveTypeName,
+            leave.fromDate,
+            leave.toDate,
+            leave.reason || 'No reason provided'
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send leave application email:', emailError);
+        // Continue even if email fails
+      }
       
       res.status(201).json(leave);
     } catch (error) {
@@ -232,7 +253,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Leave not found" });
       }
       
-      // In production, send email notification here
+      // Send email notification to employee
+      try {
+        const employee = await storage.getUserProfile(leave.userId);
+        const leaveTypes = await storage.getAllLeaveTypes();
+        const leaveTypeName = leaveTypes.find(lt => lt.id === leave.leaveTypeId)?.name || 'Leave';
+        
+        if (employee && employee.email) {
+          await emailService.sendLeaveApprovalNotification(
+            employee.email,
+            `${employee.firstName} ${employee.lastName}`,
+            leaveTypeName,
+            leave.fromDate,
+            leave.toDate,
+            'Approved',
+            comments
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send leave approval email:', emailError);
+        // Continue even if email fails
+      }
       
       res.json(leave);
     } catch (error) {
@@ -255,7 +296,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Leave not found" });
       }
       
-      // In production, send email notification here
+      // Send email notification to employee
+      try {
+        const employee = await storage.getUserProfile(leave.userId);
+        const leaveTypes = await storage.getAllLeaveTypes();
+        const leaveTypeName = leaveTypes.find(lt => lt.id === leave.leaveTypeId)?.name || 'Leave';
+        
+        if (employee && employee.email) {
+          await emailService.sendLeaveApprovalNotification(
+            employee.email,
+            `${employee.firstName} ${employee.lastName}`,
+            leaveTypeName,
+            leave.fromDate,
+            leave.toDate,
+            'Rejected',
+            comments
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send leave rejection email:', emailError);
+        // Continue even if email fails
+      }
       
       res.json(leave);
     } catch (error) {
@@ -335,7 +396,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = insertReimbursementSchema.parse(req.body);
       const reimbursement = await storage.createReimbursement(validated);
       
-      // In production, send email notification to manager here
+      // Send email notification to manager
+      try {
+        const employee = await storage.getUserProfile(reimbursement.userId);
+        const manager = reimbursement.managerId ? await storage.getUserProfile(reimbursement.managerId) : null;
+        const reimbTypes = await storage.getAllReimbursementTypes();
+        const reimbTypeName = reimbTypes.find(rt => rt.id === reimbursement.reimbursementTypeId)?.name || 'Expense';
+        
+        if (employee && manager && manager.email) {
+          await emailService.sendReimbursementNotification(
+            `${employee.firstName} ${employee.lastName}`,
+            manager.email,
+            reimbTypeName,
+            reimbursement.amount,
+            reimbursement.category || 'No description provided'
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send reimbursement notification email:', emailError);
+        // Continue even if email fails
+      }
       
       res.status(201).json(reimbursement);
     } catch (error) {
@@ -354,7 +434,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Reimbursement not found" });
       }
       
-      // In production, send email notification to accountant here
+      // Send email notification to employee
+      try {
+        const employee = await storage.getUserProfile(reimbursement.userId);
+        const reimbTypes = await storage.getAllReimbursementTypes();
+        const reimbTypeName = reimbTypes.find(rt => rt.id === reimbursement.reimbursementTypeId)?.name || 'Expense';
+        
+        if (employee && employee.email) {
+          await emailService.sendReimbursementApprovalNotification(
+            employee.email,
+            `${employee.firstName} ${employee.lastName}`,
+            reimbTypeName,
+            reimbursement.amount,
+            'Manager Approved',
+            comments
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send reimbursement approval email:', emailError);
+        // Continue even if email fails
+      }
       
       res.json(reimbursement);
     } catch (error) {
@@ -373,7 +472,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Reimbursement not found" });
       }
       
-      // In production, send email notification to employee here
+      // Send email notification to employee
+      try {
+        const employee = await storage.getUserProfile(reimbursement.userId);
+        const reimbTypes = await storage.getAllReimbursementTypes();
+        const reimbTypeName = reimbTypes.find(rt => rt.id === reimbursement.reimbursementTypeId)?.name || 'Expense';
+        
+        if (employee && employee.email) {
+          await emailService.sendReimbursementApprovalNotification(
+            employee.email,
+            `${employee.firstName} ${employee.lastName}`,
+            reimbTypeName,
+            reimbursement.amount,
+            'Approved',
+            comments
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send reimbursement approval email:', emailError);
+        // Continue even if email fails
+      }
       
       res.json(reimbursement);
     } catch (error) {

@@ -19,6 +19,26 @@ MIDCAI HRMS is a comprehensive web-based Human Resource Management System built 
 
 Preferred communication style: Simple, everyday language.
 
+## Email Notification System
+
+The HRMS system includes a comprehensive email notification system built with Nodemailer. Once SMTP credentials are configured, the system will automatically send emails for:
+
+- **Leave Applications**: Notifies managers when employees submit leave requests
+- **Leave Approvals/Rejections**: Notifies employees about leave application decisions
+- **Reimbursement Requests**: Notifies managers when employees submit expense claims
+- **Reimbursement Approvals**: Notifies employees about reimbursement approvals (manager and accountant levels)
+- **Payslip Notifications**: Notifies employees when payslips are available
+
+**Configuration Status**: Email service is implemented and ready to use. Requires the following environment variables:
+- `SMTP_HOST`: Email server address
+- `SMTP_PORT`: Port number (587 or 465)
+- `SMTP_USER`: Email username/address
+- `SMTP_PASSWORD`: Email password or app-specific password
+- `SMTP_FROM_EMAIL`: Sender email address
+- `SMTP_FROM_NAME`: Sender display name
+
+**Note**: User chose not to use the Resend integration and will provide custom SMTP credentials instead.
+
 ## System Architecture
 
 ### Frontend Architecture
