@@ -83,6 +83,9 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
       const payload: any = {
         ...data,
         insuranceOpted: data.insuranceOpted === 'yes',
+        // Convert empty date strings to null
+        birthdate: data.birthdate?.trim() || null,
+        joiningDate: data.joiningDate?.trim() || null,
       };
 
       // Only include password if it's a new employee or if it's being changed
