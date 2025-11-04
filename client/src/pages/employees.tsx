@@ -1,0 +1,197 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { UserProfile } from "@shared/schema";
+import { EmployeeForm } from "@/components/employee-form";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
+
+export default function Employees() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<UserProfile | null>(null);
+  const { toast } = useToast();
+
+  const { data: employees, isLoading } = useQuery<UserProfile[]>({
+    queryKey: ["/api/employees"],
+  });
+
+  const filteredEmployees = employees?.filter((emp) =>
+    `${emp.firstName} ${emp.lastName} ${emp.email} ${emp.username}`
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold mb-1">Employee Management</h1>
+          <p className="text-muted-foreground">
+            Manage employee profiles and access
+          </p>
+        </div>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-add-employee">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Employee
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add New Employee</DialogTitle>
+              <DialogDescription>
+                Create a new employee profile
+              </DialogDescription>
+            </DialogHeader>
+            <EmployeeForm
+              onSuccess={() => {
+                setIsAddDialogOpen(false);
+                queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+                toast({
+                  title: "Success",
+                  description: "Employee created successfully",
+                });
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search employees..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+            data-testid="input-search-employees"
+          />
+        </div>
+      </div>
+
+      <div className="border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-8 w-16 ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </>
+            ) : filteredEmployees && filteredEmployees.length > 0 ? (
+              filteredEmployees.map((employee) => (
+                <TableRow key={employee.id} data-testid={`row-employee-${employee.id}`}>
+                  <TableCell className="font-medium">
+                    {employee.firstName} {employee.lastName}
+                  </TableCell>
+                  <TableCell>{employee.email}</TableCell>
+                  <TableCell>{employee.departmentId || "-"}</TableCell>
+                  <TableCell>{employee.roleId || "-"}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={employee.status === "Active" ? "default" : "secondary"}
+                      data-testid={`badge-status-${employee.id}`}
+                    >
+                      {employee.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        data-testid={`button-edit-${employee.id}`}
+                        onClick={() => setEditingEmployee(employee)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        data-testid={`button-delete-${employee.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  No employees found
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {editingEmployee && (
+        <Dialog open={!!editingEmployee} onOpenChange={() => setEditingEmployee(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Employee</DialogTitle>
+              <DialogDescription>
+                Update employee information
+              </DialogDescription>
+            </DialogHeader>
+            <EmployeeForm
+              employee={editingEmployee}
+              onSuccess={() => {
+                setEditingEmployee(null);
+                queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+                toast({
+                  title: "Success",
+                  description: "Employee updated successfully",
+                });
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}
