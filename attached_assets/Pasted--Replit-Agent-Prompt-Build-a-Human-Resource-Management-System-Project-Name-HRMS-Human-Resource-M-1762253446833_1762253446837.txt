@@ -1,0 +1,303 @@
+✅ Replit Agent Prompt: Build a Human Resource Management System
+Project Name: HRMS Human Resource Management System ERP
+Project Description:
+Midcai Consulting Private Limited, an IT services company, requires a comprehensive web-based
+ERP system to streamline its workforce and organizational operations. The integrated HRMS
+ERP will centralize key functions such as employee management, attendance, leave tracking,
+holidays, reimbursements, payroll, and document management.
+In addition to HR-related modules, the system will include foundational ERP components like
+company accounts, stock management, buying & selling, and manufacturing (as
+placeholders for future expansion).
+The platform will provide role-based access for different user types — Administrators, HR
+professionals, Managers, and Employees — and support operations across various
+departments, including:
+● Project Management
+● Marketing
+● Sales
+● Human Resources
+● Accounts
+● Inventory
+● IT
+The ERP will also maintain comprehensive company details such as company profile, structure,
+policies, and contact information, ensuring all departments operate in a unified and efficient
+system.
+✅ Target Platform
+Platform: Web
+Frontend: React (using Vite or Create React App)
+Backend: Python Flask
+Database: PostgreSQL
+✅ Operating Environment
+Type: Online
+(Ensure email and PDF generation features are supported)
+✅ Hosting Options
+To be hosted on: On Replit only
+✅ Language Preferences
+● Language for Replit Agent communication: English
+● Language for Application Interface: English
+✅ Interface Style
+● Clean and user-friendly
+● Tabular views with pagination and sorting
+● Role-specific views and controls
+● Use the provided colour coding for building the interface:
+○ MIDCAI Beige: F3EDED
+○ MIDCAI Orange F23F00
+○ MIDCAI Black 100D08
+○ White FFFFFF
+● Use the provided logo and details for branding:
+○ Name = MIDCAI
+○ Tag Line = Unfolding Perpetually
+○ Address = 906-907, Signature Elite, J 7, Govind Marg,Nr. Narayan Singh Circle,
+Jaipur, Rajasthan - 302004
+○ Contact phone: +91-9503118434
+○ Email = contact@midcai.com
+○ Website: https://midcai.com/
+✅ Modules and Functionality
+🔐 Administrator Module:
+★ Tables:
+○ UserProfile: Id, Role_Id, Company, FirstName, MiddleName, LastName, Email,
+Phone, Address (Street, City, State, Country), Language, TimeZone, Gender,
+Birthdate, UserName, Password_Hash, Status (Active/Inactive), User_Type,
+Bank_Account, Insurance_Opted (yes/no), Department_Id, Manager_Id,
+Joining_Date
+○ UserType : UserType Name (Individual / Manager / Admin / Vendor /
+Contractor), UserType ID.
+○ UserRole: Role_Id, RoleName (Developer, Tech Lead, HR Executive, Project
+Manager) , Role_Description, Access_type, Access_level
+○ Department: Department_ID, Department Name, Department_Description
+★ Features using UserProfile:
+○ Default users: admin/admin
+○ Each logged-in user sees their name in the UI with a profile link. They can view
+and edit their own profile.
+○ Email-based temporary password on user creation
+○ Secure password hashing & storage
+○ Password reset/change features for all users (self-service + admin override)
+○ Administrator role has full access to manage users (Edit & Delete) within the
+User Management module.
+● Features using UserRole:
+○ Role-based access control
+○ Access_type logic:
+○ Admin has full access to all modules. Admin can add/edit/delete user profiles
+with validation.
+○ HR manages attendance, leave, payroll, reimbursements.
+○ Manager approves leaves and manages team-level reports.
+○ Employee has self-service access to attendance, leave and reimbursements.
+○ Accountant manages payroll and accounts modules.
+● Main Functions :
+○ Employee Database Management – Add, update, and maintain all employee
+records and documents.
+○ User Role & Access Control – Assign system roles (Admin, HR, Employee) and
+manage permissions.
+○ Organizational Structure Setup – Define departments, designations, reporting
+lines, and hierarchy.
+○ Policy Configuration – Set up HR policies like attendance, leave, holidays, and
+holiday calendars.
+○ Leave & Attendance Administration – Manage leave types, attendance rules,
+and approval workflows.
+○ Payroll Configuration – Set up salary structures, benefits, deductions, and
+statutory compliance.
+○ Employee Lifecycle Management – Handle onboarding, transfers, promotions,
+and exits.
+○ System Security & Configuration – Manage passwords, access rights, and data
+backups.
+○ Workflow & Approval Management – Automate approval processes (leave,
+attendance, payroll, etc.).
+○ Document Management – Store and manage employee-related files (ID proofs,
+offer letters, etc.).
+○ Reports & Analytics – Generate HR reports like attendance, headcount, and
+payroll summaries.
+○ Compliance Management – Maintain statutory reports (PF, ESI, PT, TDS, etc.).
+○ Audit & Activity Logs – Track user activities and system changes for
+transparency.
+📝 Attendance Module:
+● Table:
+○ Attendance: Id, User_Id, Attendance_Date, Status[Present, Absent, On Leave,
+Half Day, Work From Home, Work from Client Location], Leave_Type,
+Company_Id, Check_In, Check_Out, Early_Sign_In, Early_Sign_Out, Late_Sign_In,
+Late_Sign_Out, Shift_Timing, Total duration (day).
+○ Bulk Attendance - Yes (only system admin can access)
+● Features:
+○ Role Based Access
+○ Calculate working hours (check-in/check-out difference)
+○ Mark attendance status (Present, Absent, On Leave, Half Day, Work From Home)
+■ Edit Access Users
+● Roles:
+● Permissions:
+● Functions:
+○ Attendance Setup:HR defines:
+■ Office timings
+■ Attendance rules : Full Day & Half Day Rules - Defines how many hours
+count as full or half day.
+■ LOP (Loss of Pay) Rules - Defines when salary is deducted for absence.
+○ Attendance Capture:Methods of capturing attendance:
+■ Web portal login/logout
+○ Attendance Updation :
+■ Excel or manual import (if not automated)
+■ Location Manual updation
+■ Attendance Regularization : Employees can request corrections for
+missed punches - If biometric or system login failed, employees can
+correct it.
+■ HR or managers review and approve/reject -The request goes to the
+reporting manager or HR for approval. The approver gets an email as
+soon as leave is applied. The approver can approve the attendance which
+will get corrected automatically, can reject the request that will remain
+unchanged.
+■ Apply leave type (Sick leave, annual leave, short leave, etc..) based on the
+count of remaining leaves available in the user’s leave stock.
+○ Integration with Leave & Payroll
+■ Approved leaves are auto-marked as “Leave” in attendance.
+■ Attendance summary feeds into Payroll for:
+● Days worked
+● LOP (Loss of Pay) days
+● Payroll and leave balances will calculated correctly.
+○ Reporting & Monitoring: Dashboards:
+■ Regularization frequency by employee
+■ Common reasons (e.g., missed punch, on-duty)
+■ Pending approvals
+■ Approved vs rejected requests
+✈️ Holiday Module:
+● Tables:
+○ Holiday: Id, Name, Company, Holiday_List, From_Date, To_Date, Total_Holidays
+○ HolidayDetails: Id, Date, Description
+● Features:
+○ Maintain a list of public and company-specific holidays.
+○ Role Based Access:
+■ Edit Access users: Administrator
+● Full CRUD on Holiday, HolidayDetails.
+● Main Functions:
+○ Holiday Calendar Creation-
+■ HR defines the list of company holidays for the year.
+■ Can be created for the whole organization or specific locations/branches:
+■ Create multiple calendars for different offices, states, or
+countries.
+○ Holiday Category Management-
+■ Set different types of holidays — National, Festival, Restricted,
+Company-specific, etc.
+■ Location- or Department-wise Calendar-
+○ Integration with Attendance & Leave Modules-
+■ Holidays are automatically marked as “Off” in attendance.
+■ Paid Leave and payroll calculations skip holiday days automatically.
+○ Auto Holiday Mapping to Employees-
+■ System links employees to their respective holiday calendar based on
+location or department.
+■ Editing & Updating Holidays-
+■ HR can easily add, remove, or modify holidays mid-year if needed.
+📴 Leaves Module:
+● Tables:
+○ Leaves: Id, User_Id, Leave_Type_Id, Company_Id, From_Date, To_Date, Half_Day,
+Reason, Status[Open, Approved, Rejected, Cancelled], Posting_Date, Manager_Id
+○ LeaveType: Id, Leave_Type_Name, Maximum_Consecutive_Leaves_Allowed,
+Is_Carry_Forward(boolean)
+○ LeaveLedger: Leaveledger_Id, Employee_Name, Leave_type, Total_leaves
+● Features:
+○ Define Leave policies (Annual, Sick, Comp-Off, Unpaid)
+○ Apply for leave with date range and reason.
+○ Approval workflow
+○ Track leave balances and leave history.
+○ Auto-mark approved leave days in attendance.
+○ There must be notification upon creation of new Leave application claim
+○ Role Based Access:
+■ Edit Access users: Administrator
+● Full CRUD on Leave, LeaveType.
+● Functions:
+○ HR configures:
+■ Leave types (Casual, Sick, Earned, etc..
+■ Entitlement rules (e.g., 12 CL per year)
+■ Approval workflow
+■ Carry-forward and encashment rules
+■ Employee Applies for Leave:Employee logs into HRMS → chooses
+Leave Type, Start & End Date, and Reason → Submits request.
+○ Manager/HR Approves or Rejects:
+■ Approves → Leave marked as “Approved” in the system.
+■ Rejects → Employee notified with remarks.
+○ System Updates Records:
+■ Once approved:
+■ Attendance record shows “Leave” instead of “Absent.”
+■ Payroll reflects full pay (if paid leave).
+■ Leave balance auto-updates.
+○ Reporting & Analytics:HR can track:
+■ Leave utilization by employee or department
+■ Absentee trends
+■ Remaining leave liabilities (for payroll)
+🏢 Company Module:
+● Tables:
+○ Company: Id, Company_Name, CostCenter, Country, Date_Of_Establishment
+○ CostCenter: Id, Costcenter_Name, Costcenter_Description
+● Features:
+○ Role Based Access:
+■ Edit Access users: Administrator
+● Full CRUD on Company.
+● Functions:
+○ Company Profile Setup– Stores basic company details like name, address, logo,
+registration number, tax details, contact info, etc.
+○ Organization Hierarchy– Create reporting lines — who reports to whom (for
+workflow approvals).
+○ Location Management– Add and manage multiple branches, offices, plants, or
+sites with location-specific settings.
+○ Department & Designation Setup– Define organizational structure like
+departments, sections, and job designations.
+○ Holiday Calendar Setup– Link branch-wise or region-wise holiday lists to the
+company setup.
+💳 Reimbursement Module:
+● Tables:
+○ Reimbursement: Id, User_Id, Reimbursement_Type, Date, Amount, Category,
+Attachment, Status, Approval Manager (Reporting Manager)
+■ There will be two layers of approval - first by reporting manager, second
+by accounts executive
+■ There must be notification upon creation of new reimburse claim
+○ ReimbursementType: (Meals & Entertainment, Office Supplies,
+Accommodation, Phone & Internet, Others, Travel) Reimbursement_Id,
+ReimbursementType_Name
+● Features:
+○ Approve or reject reimbursement
+○ Submit reimbursement requests with category, date, receipt(image or PDFs),
+amount.
+○ Generate reimbursement reports
+○ Role Based Access:
+■ Edit Access users: Administrator
+● Full CRUD on Reimbursement.
+● Functions:
+○ Policy Setup & Configuration– HR defines reimbursement rules — eligible
+expense types, limits, frequency, and approval hierarchy.
+○ Expense Category Creation– Set up various claim categories like Travel, Food,
+Mobile Bill, Internet, Conveyance, Accommodation, etc.
+○ Employee Claim Submission– Employees submit reimbursement requests via
+HRMS with details like amount, date, and supporting bills.
+○ Document Attachment– Employees upload scanned bills, receipts, or invoices as
+proof for the claim.
+○ Approval Workflow– Claims automatically route to the reporting manager and
+Finance for review and approval.
+○ Verification & Validation– HR or Finance verifies the claim details and attached
+documents as per company policy.
+○ Claim Processing– Approved claims are marked for payment; rejected claims are
+sent back with reasons.
+○ Integration with Payroll– Approved reimbursement amounts are added to the
+employee’s next payroll cycle or paid separately.
+○ Claim Tracking– Employees can track the status of their submitted claims —
+Pending, Approved, Paid, or Rejected.
+○ Reporting & Analytics– HR can generate reports on expense trends,
+department-wise spending, and pending claims.
+💵 Payroll
+● Payslip: Id, Payroll_run, user_id, Total_Salary, Basic_Pay, HRA, Travel_Allowance,
+Other_Allowance, PF, TDS, Net_Pay, Gross, Deductions, Payslip_pdf
+● PayrollRun: id, company_id, period_start, period_end, created_by, status)
+● Features:
+○ Simple payroll engine: calculate earnings based on salary, attendance deductions
+(LWP), reimbursements, taxes (basic placeholder), and statutory items.
+○ Generate payslips (PDF). Save files.
+○ Payroll admin page: run payroll for period, preview, approve, publish.
+○ Payslip download for employees.
+● Functions:
+○ Employee Salary Setup– Define salary structures (basic pay, HRA, DA, bonuses,
+deductions) for each employee or grade.
+○ Attendance & Leave Integration– Automatically fetches attendance and leave
+data to calculate payable days and loss of pay (LOP).
+○ Salary Calculation– System calculates gross pay, deductions, and net salary based
+on defined formulas and rules.
+○ Reimbursement & Allowance Integration– Adds approved reimbursements,
+incentives, and variable pay to the salary.
+○ Payroll Processing– Generates monthly payroll, validates all entries, and finalizes
+the salary.
+○ Payslip Generation– Creates digital or printable payslips showing complete
+salary breakup and deductions.
+○ Tax Management– Manages employee tax declarations, deductions (TDS), and
+Form 16 generation.
