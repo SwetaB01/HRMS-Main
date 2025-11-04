@@ -1,0 +1,484 @@
+import { eq, and } from 'drizzle-orm';
+import { db } from './db';
+import bcrypt from 'bcryptjs';
+import {
+  userProfiles,
+  userTypes,
+  userRoles,
+  departments,
+  companies,
+  costCenters,
+  leaveTypes,
+  leaves,
+  leaveLedgers,
+  holidays,
+  holidayDetails,
+  attendance,
+  reimbursementTypes,
+  reimbursements,
+  payrolls,
+  type UserProfile,
+  type InsertUserProfile,
+  type UserType,
+  type InsertUserType,
+  type UserRole,
+  type InsertUserRole,
+  type Department,
+  type InsertDepartment,
+  type Company,
+  type InsertCompany,
+  type LeaveType,
+  type InsertLeaveType,
+  type Leave,
+  type InsertLeave,
+  type LeaveLedger,
+  type InsertLeaveLedger,
+  type Holiday,
+  type InsertHoliday,
+  type Attendance,
+  type InsertAttendance,
+  type ReimbursementType,
+  type InsertReimbursementType,
+  type Reimbursement,
+  type InsertReimbursement,
+  type Payroll,
+  type InsertPayroll,
+} from '@shared/schema';
+import type { IStorage } from './storage';
+
+export class PostgresStorage implements IStorage {
+  async getUserProfile(id: string): Promise<UserProfile | undefined> {
+    const result = await db.select().from(userProfiles).where(eq(userProfiles.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUserProfileByUsername(username: string): Promise<UserProfile | undefined> {
+    const result = await db.select().from(userProfiles).where(eq(userProfiles.username, username)).limit(1);
+    return result[0];
+  }
+
+  async getUserProfileByEmail(email: string): Promise<UserProfile | undefined> {
+    const result = await db.select().from(userProfiles).where(eq(userProfiles.email, email)).limit(1);
+    return result[0];
+  }
+
+  async createUserProfile(profile: InsertUserProfile): Promise<UserProfile> {
+    const { password, ...profileData } = profile;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const [newProfile] = await db.insert(userProfiles).values({
+      ...profileData,
+      passwordHash: hashedPassword,
+    }).returning();
+    return newProfile;
+  }
+
+  async updateUserProfile(id: string, profile: Partial<InsertUserProfile>): Promise<UserProfile | undefined> {
+    const updates: any = { ...profile };
+    if (updates.password) {
+      updates.passwordHash = await bcrypt.hash(updates.password, 10);
+      delete updates.password;
+    }
+    
+    const [updated] = await db.update(userProfiles)
+      .set(updates)
+      .where(eq(userProfiles.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteUserProfile(id: string): Promise<boolean> {
+    const result = await db.delete(userProfiles).where(eq(userProfiles.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getAllUserProfiles(): Promise<UserProfile[]> {
+    return await db.select().from(userProfiles);
+  }
+
+  async getAllUserTypes(): Promise<UserType[]> {
+    return await db.select().from(userTypes);
+  }
+
+  async createUserType(type: InsertUserType): Promise<UserType> {
+    const [newType] = await db.insert(userTypes).values(type).returning();
+    return newType;
+  }
+
+  async getAllUserRoles(): Promise<UserRole[]> {
+    return await db.select().from(userRoles);
+  }
+
+  async createUserRole(role: InsertUserRole): Promise<UserRole> {
+    const [newRole] = await db.insert(userRoles).values(role).returning();
+    return newRole;
+  }
+
+  async getUserRole(id: string): Promise<UserRole | undefined> {
+    const result = await db.select().from(userRoles).where(eq(userRoles.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getAllDepartments(): Promise<Department[]> {
+    return await db.select().from(departments);
+  }
+
+  async createDepartment(dept: InsertDepartment): Promise<Department> {
+    const [newDept] = await db.insert(departments).values(dept).returning();
+    return newDept;
+  }
+
+  async getCompany(id: string): Promise<Company | undefined> {
+    const result = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getAllCompanies(): Promise<Company[]> {
+    return await db.select().from(companies);
+  }
+
+  async createCompany(company: InsertCompany): Promise<Company> {
+    const [newCompany] = await db.insert(companies).values(company).returning();
+    return newCompany;
+  }
+
+  async updateCompany(id: string, company: Partial<InsertCompany>): Promise<Company | undefined> {
+    const [updated] = await db.update(companies)
+      .set(company)
+      .where(eq(companies.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getAllLeaveTypes(): Promise<LeaveType[]> {
+    return await db.select().from(leaveTypes);
+  }
+
+  async createLeaveType(type: InsertLeaveType): Promise<LeaveType> {
+    const [newType] = await db.insert(leaveTypes).values(type).returning();
+    return newType;
+  }
+
+  async getLeave(id: string): Promise<Leave | undefined> {
+    const result = await db.select().from(leaves).where(eq(leaves.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getLeavesByUser(userId: string): Promise<Leave[]> {
+    return await db.select().from(leaves).where(eq(leaves.userId, userId));
+  }
+
+  async getAllLeaves(): Promise<Leave[]> {
+    return await db.select().from(leaves);
+  }
+
+  async getLeavesPendingApproval(managerId: string): Promise<Leave[]> {
+    return await db.select().from(leaves)
+      .where(and(eq(leaves.managerId, managerId), eq(leaves.status, 'Open')));
+  }
+
+  async createLeave(leave: InsertLeave): Promise<Leave> {
+    const [newLeave] = await db.insert(leaves).values(leave).returning();
+    return newLeave;
+  }
+
+  async updateLeave(id: string, leave: Partial<InsertLeave>): Promise<Leave | undefined> {
+    const [updated] = await db.update(leaves)
+      .set(leave)
+      .where(eq(leaves.id, id))
+      .returning();
+    return updated;
+  }
+
+  async approveLeave(id: string, managerId: string, comments?: string): Promise<Leave | undefined> {
+    const [updated] = await db.update(leaves)
+      .set({
+        status: 'Approved',
+        managerApprovalDate: new Date(),
+        managerComments: comments || null,
+      })
+      .where(eq(leaves.id, id))
+      .returning();
+    return updated;
+  }
+
+  async rejectLeave(id: string, managerId: string, comments: string): Promise<Leave | undefined> {
+    const [updated] = await db.update(leaves)
+      .set({
+        status: 'Rejected',
+        managerApprovalDate: new Date(),
+        managerComments: comments,
+      })
+      .where(eq(leaves.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getLeaveLedgerByUser(userId: string): Promise<LeaveLedger[]> {
+    return await db.select().from(leaveLedgers).where(eq(leaveLedgers.userId, userId));
+  }
+
+  async createLeaveLedger(ledger: InsertLeaveLedger): Promise<LeaveLedger> {
+    const [newLedger] = await db.insert(leaveLedgers).values(ledger).returning();
+    return newLedger;
+  }
+
+  async updateLeaveLedger(id: string, ledger: Partial<InsertLeaveLedger>): Promise<LeaveLedger | undefined> {
+    const [updated] = await db.update(leaveLedgers)
+      .set(ledger)
+      .where(eq(leaveLedgers.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getAllHolidays(): Promise<Holiday[]> {
+    return await db.select().from(holidays);
+  }
+
+  async createHoliday(holiday: InsertHoliday): Promise<Holiday> {
+    const [newHoliday] = await db.insert(holidays).values(holiday).returning();
+    return newHoliday;
+  }
+
+  async updateHoliday(id: string, holiday: Partial<InsertHoliday>): Promise<Holiday | undefined> {
+    const [updated] = await db.update(holidays)
+      .set(holiday)
+      .where(eq(holidays.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteHoliday(id: string): Promise<boolean> {
+    const result = await db.delete(holidays).where(eq(holidays.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getAttendance(id: string): Promise<Attendance | undefined> {
+    const result = await db.select().from(attendance).where(eq(attendance.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getAttendanceByUser(userId: string, fromDate?: string, toDate?: string): Promise<Attendance[]> {
+    if (fromDate && toDate) {
+      return await db.select().from(attendance)
+        .where(and(
+          eq(attendance.userId, userId),
+          // Note: For date filtering, you'd add SQL date comparison here
+        ));
+    }
+    return await db.select().from(attendance).where(eq(attendance.userId, userId));
+  }
+
+  async getTodayAttendance(userId: string): Promise<Attendance | undefined> {
+    const today = new Date().toISOString().split('T')[0];
+    const result = await db.select().from(attendance)
+      .where(and(eq(attendance.userId, userId), eq(attendance.attendanceDate, today)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createAttendance(att: InsertAttendance): Promise<Attendance> {
+    const [newAttendance] = await db.insert(attendance).values(att).returning();
+    return newAttendance;
+  }
+
+  async updateAttendance(id: string, att: Partial<InsertAttendance>): Promise<Attendance | undefined> {
+    const [updated] = await db.update(attendance)
+      .set(att)
+      .where(eq(attendance.id, id))
+      .returning();
+    return updated;
+  }
+
+  async checkIn(userId: string): Promise<Attendance> {
+    const today = new Date().toISOString().split('T')[0];
+    const existing = await this.getTodayAttendance(userId);
+    
+    if (existing) {
+      throw new Error('Already checked in today');
+    }
+
+    const now = new Date();
+    const [newAttendance] = await db.insert(attendance).values({
+      userId,
+      attendanceDate: today,
+      status: 'Present',
+      checkIn: now,
+      checkOut: null,
+      earlySignIn: false,
+      earlySignOut: false,
+      lateSignIn: false,
+      lateSignOut: false,
+      regularizationRequested: false,
+    }).returning();
+    
+    return newAttendance;
+  }
+
+  async checkOut(userId: string): Promise<Attendance | undefined> {
+    const today = new Date().toISOString().split('T')[0];
+    const existing = await this.getTodayAttendance(userId);
+    
+    if (!existing || existing.checkOut) {
+      return undefined;
+    }
+
+    const now = new Date();
+    const checkInTime = existing.checkIn ? new Date(existing.checkIn).getTime() : now.getTime();
+    const durationMs = now.getTime() - checkInTime;
+    const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(2);
+
+    const [updated] = await db.update(attendance)
+      .set({
+        checkOut: now,
+        totalDuration: durationHours,
+      })
+      .where(eq(attendance.id, existing.id))
+      .returning();
+    
+    return updated;
+  }
+
+  async getAllReimbursementTypes(): Promise<ReimbursementType[]> {
+    return await db.select().from(reimbursementTypes);
+  }
+
+  async createReimbursementType(type: InsertReimbursementType): Promise<ReimbursementType> {
+    const [newType] = await db.insert(reimbursementTypes).values(type).returning();
+    return newType;
+  }
+
+  async getReimbursement(id: string): Promise<Reimbursement | undefined> {
+    const result = await db.select().from(reimbursements).where(eq(reimbursements.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getReimbursementsByUser(userId: string): Promise<Reimbursement[]> {
+    return await db.select().from(reimbursements).where(eq(reimbursements.userId, userId));
+  }
+
+  async getAllReimbursements(): Promise<Reimbursement[]> {
+    return await db.select().from(reimbursements);
+  }
+
+  async getReimbursementsPendingManagerApproval(managerId: string): Promise<Reimbursement[]> {
+    return await db.select().from(reimbursements)
+      .where(and(eq(reimbursements.managerId, managerId), eq(reimbursements.status, 'Pending')));
+  }
+
+  async getReimbursementsPendingAccountantApproval(): Promise<Reimbursement[]> {
+    return await db.select().from(reimbursements).where(eq(reimbursements.status, 'Manager Approved'));
+  }
+
+  async createReimbursement(reimbursement: InsertReimbursement): Promise<Reimbursement> {
+    const [newReimbursement] = await db.insert(reimbursements).values(reimbursement).returning();
+    return newReimbursement;
+  }
+
+  async approveReimbursementByManager(id: string, managerId: string, comments?: string): Promise<Reimbursement | undefined> {
+    const [updated] = await db.update(reimbursements)
+      .set({
+        status: 'Manager Approved',
+        managerApprovalDate: new Date(),
+        managerComments: comments || null,
+      })
+      .where(eq(reimbursements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async approveReimbursementByAccountant(id: string, accountantId: string, comments?: string): Promise<Reimbursement | undefined> {
+    const [updated] = await db.update(reimbursements)
+      .set({
+        status: 'Approved',
+        accountantId,
+        accountantApprovalDate: new Date(),
+        accountantComments: comments || null,
+      })
+      .where(eq(reimbursements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async rejectReimbursement(id: string, userId: string, comments: string): Promise<Reimbursement | undefined> {
+    const reimb = await this.getReimbursement(id);
+    if (!reimb) return undefined;
+
+    const updates: any = { status: 'Rejected' };
+    if (!reimb.managerApprovalDate) {
+      updates.managerApprovalDate = new Date();
+      updates.managerComments = comments;
+    } else {
+      updates.accountantApprovalDate = new Date();
+      updates.accountantComments = comments;
+    }
+
+    const [updated] = await db.update(reimbursements)
+      .set(updates)
+      .where(eq(reimbursements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getPayroll(id: string): Promise<Payroll | undefined> {
+    const result = await db.select().from(payrolls).where(eq(payrolls.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getPayrollsByUser(userId: string): Promise<Payroll[]> {
+    return await db.select().from(payrolls).where(eq(payrolls.userId, userId));
+  }
+
+  async getAllPayrolls(): Promise<Payroll[]> {
+    return await db.select().from(payrolls);
+  }
+
+  async createPayroll(payroll: InsertPayroll): Promise<Payroll> {
+    const [newPayroll] = await db.insert(payrolls).values(payroll).returning();
+    return newPayroll;
+  }
+
+  async updatePayroll(id: string, payroll: Partial<InsertPayroll>): Promise<Payroll | undefined> {
+    const [updated] = await db.update(payrolls)
+      .set(payroll)
+      .where(eq(payrolls.id, id))
+      .returning();
+    return updated;
+  }
+
+  async approvePayroll(id: string, approverId: string): Promise<Payroll | undefined> {
+    const [updated] = await db.update(payrolls)
+      .set({
+        status: 'Approved',
+        approvedBy: approverId,
+        approvedAt: new Date(),
+      })
+      .where(eq(payrolls.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getDashboardStats(): Promise<{
+    totalEmployees: number;
+    presentToday: number;
+    onLeave: number;
+    pendingApprovals: number;
+    pendingReimbursements: number;
+    pendingRegularizations: number;
+  }> {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const allEmployees = await db.select().from(userProfiles);
+    const todayAttendance = await db.select().from(attendance).where(eq(attendance.attendanceDate, today));
+    const pendingLeaves = await db.select().from(leaves).where(eq(leaves.status, 'Open'));
+    const pendingReimb = await db.select().from(reimbursements).where(eq(reimbursements.status, 'Pending'));
+    
+    return {
+      totalEmployees: allEmployees.length,
+      presentToday: todayAttendance.filter(a => a.status === 'Present').length,
+      onLeave: todayAttendance.filter(a => a.status === 'On Leave').length,
+      pendingApprovals: pendingLeaves.length,
+      pendingReimbursements: pendingReimb.length,
+      pendingRegularizations: todayAttendance.filter(a => a.regularizationRequested && !a.regularizationStatus).length,
+    };
+  }
+}

@@ -114,6 +114,7 @@ export interface IStorage {
   }>;
 }
 
+/* Keeping MemStorage for reference, but now using PostgreSQL */
 export class MemStorage implements IStorage {
   private userProfiles: Map<string, UserProfile> = new Map();
   private userTypes: Map<string, UserType> = new Map();
@@ -680,4 +681,6 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Export PostgreSQL storage instead of in-memory storage
+import { PostgresStorage } from './pg-storage';
+export const storage = new PostgresStorage();
