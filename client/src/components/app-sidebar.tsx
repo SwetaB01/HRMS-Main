@@ -8,7 +8,9 @@ import {
   DollarSign, 
   Building, 
   FileText,
-  LogOut
+  LogOut,
+  LayoutDashboard,
+  User
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -122,6 +124,14 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === "/profile"}>
+                  <Link href="/profile">
+                    <User className="h-4 w-4" />
+                    <span>My Profile</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

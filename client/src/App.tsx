@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
+import ProfilePage from "@/pages/profile";
 import Employees from "@/pages/employees";
 import Attendance from "@/pages/attendance";
 import Leaves from "@/pages/leaves";
@@ -22,6 +23,7 @@ function Router({ currentUser, onLogout }: { currentUser: any; onLogout: () => v
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/profile" component={ProfilePage} />
       <Route path="/employees" component={Employees} />
       <Route path="/attendance" component={Attendance} />
       <Route path="/leaves" component={Leaves} />
