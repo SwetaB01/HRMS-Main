@@ -1,6 +1,7 @@
 import { db } from './db';
-import { userRoles, userProfiles, leaveTypes, reimbursementTypes } from '@shared/schema';
+import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes } from '@shared/schema';
 import bcrypt from 'bcryptjs';
+import { eq } from 'drizzle-orm';
 
 export async function seedDatabase() {
   console.log('Seeding database...');
@@ -19,6 +20,22 @@ export async function seedDatabase() {
     accessType: 'Admin',
     accessLevel: 'Full',
   }).returning();
+
+  // Seed user types
+  const userTypesData = [
+    { name: 'Admin' },
+    { name: 'Manager' },
+    { name: 'Individual' },
+    { name: 'Vendor' },
+    { name: 'Contractor' },
+  ];
+
+  for (const type of userTypesData) {
+    const exists = await db.select().from(userTypes).where(eq(userTypes.name, type.name)).limit(1);
+    if (exists.length === 0) {
+      await db.insert(userTypes).values(type);
+    }
+  }
 
   // Create default admin user
   const hashedPassword = await bcrypt.hash('admin', 10);
