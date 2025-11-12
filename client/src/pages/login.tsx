@@ -74,7 +74,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Welcome Back</CardTitle>
+            <CardTitle>Welcome</CardTitle>
             <CardDescription>
               Sign in to access your HRMS account
             </CardDescription>
