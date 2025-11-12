@@ -86,8 +86,9 @@ export const userProfiles = pgTable("user_profiles", {
   bankAccount: text("bank_account"),
   insuranceOpted: boolean("insurance_opted").default(false),
   departmentId: varchar("department_id").references(() => departments.id),
-  managerId: varchar("manager_id"),
+  managerId: varchar("manager_id").references(() => userProfiles.id),
   joiningDate: date("joining_date"),
+  photo: text("photo"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

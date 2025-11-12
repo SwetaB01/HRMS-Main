@@ -40,6 +40,7 @@ const employeeFormSchema = z.object({
   bankAccount: z.string().optional(),
   insuranceOpted: z.string().optional(),
   joiningDate: z.string().optional(),
+  photo: z.string().optional(),
 });
 
 type EmployeeFormData = z.infer<typeof employeeFormSchema>;
@@ -51,6 +52,7 @@ interface EmployeeFormProps {
 
 export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(employee?.photo || null);
 
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeFormSchema),
@@ -73,8 +75,22 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
       bankAccount: employee?.bankAccount || "",
       insuranceOpted: employee?.insuranceOpted ? "yes" : "no",
       joiningDate: employee?.joiningDate || "",
+      photo: employee?.photo || "",
     },
   });
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setPhotoPreview(base64String);
+        form.setValue('photo', base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (data: EmployeeFormData) => {
     setIsLoading(true);
@@ -233,6 +249,39 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
                     data-testid="input-password-form"
                     {...field}
                   />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <FormField
+            control={form.control}
+            name="photo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Profile Photo</FormLabel>
+                <FormControl>
+                  <div className="flex items-center gap-4">
+                    {photoPreview && (
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200">
+                        <img
+                          src={photoPreview}
+                          alt="Profile preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      data-testid="input-photo"
+                      className="flex-1"
+                    />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
