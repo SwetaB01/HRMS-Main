@@ -61,7 +61,7 @@ export default function Attendance() {
   const { toast } = useToast();
 
   const { data: attendanceRecords, isLoading } = useQuery<AttendanceType[]>({
-    queryKey: ["/api/attendance", selectedDate],
+    queryKey: ["/api/attendance"],
   });
 
   const { data: todayStatus } = useQuery({

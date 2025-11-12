@@ -208,8 +208,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/attendance", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const fromDate = req.query.fromDate as string;
-      const toDate = req.query.toDate as string;
+      const fromDate = req.query.fromDate as string | undefined;
+      const toDate = req.query.toDate as string | undefined;
 
       const attendance = await storage.getAttendanceByUser(userId, fromDate, toDate);
       res.json(attendance);

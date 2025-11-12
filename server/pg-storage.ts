@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, gte, lte, desc } from 'drizzle-orm';
 import { db } from './db';
 import bcrypt from 'bcryptjs';
 import {
@@ -262,14 +262,22 @@ export class PostgresStorage implements IStorage {
   }
 
   async getAttendanceByUser(userId: string, fromDate?: string, toDate?: string): Promise<Attendance[]> {
+    let query = db
+      .select()
+      .from(attendance)
+      .where(eq(attendance.userId, userId))
+      .orderBy(desc(attendance.attendanceDate));
+
     if (fromDate && toDate) {
-      return await db.select().from(attendance)
-        .where(and(
-          eq(attendance.userId, userId),
-          // Note: For date filtering, you'd add SQL date comparison here
-        ));
+      query = query.where(
+        and(
+          gte(attendance.attendanceDate, fromDate),
+          lte(attendance.attendanceDate, toDate)
+        )
+      ) as any;
     }
-    return await db.select().from(attendance).where(eq(attendance.userId, userId));
+
+    return await query;
   }
 
   async getTodayAttendance(userId: string): Promise<Attendance | undefined> {
