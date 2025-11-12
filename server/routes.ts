@@ -4,8 +4,28 @@ import { storage } from "./storage";
 import { insertUserProfileSchema, insertLeaveSchema, insertHolidaySchema, insertReimbursementSchema, insertPayrollSchema } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import { emailService } from "./email";
+import session from "express-session";
+
+// Simple in-memory session store (for production, use Redis or database-backed store)
+declare module 'express-session' {
+  interface SessionData {
+    userId: string;
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup session middleware
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'midcai-hrms-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
+
   // Authentication Routes
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -26,6 +46,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.status !== "Active") {
         return res.status(403).json({ message: "Account is inactive. Please contact administrator." });
       }
+
+      // Store user ID in session
+      req.session.userId = user.id;
 
       // Get user role information
       let roleName = 'Employee';
@@ -168,7 +191,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Attendance Routes
   app.get("/api/attendance", async (req, res) => {
     try {
-      const userId = req.query.userId as string || 'admin-user'; // Default to admin for now
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
       const fromDate = req.query.fromDate as string;
       const toDate = req.query.toDate as string;
 
@@ -181,7 +208,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/attendance/today-status", async (req, res) => {
     try {
-      const userId = 'admin-user'; // In production, get from session
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
       const todayStatus = await storage.getTodayAttendance(userId);
       res.json(todayStatus || null);
     } catch (error) {
@@ -191,7 +222,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/attendance/check-in", async (req, res) => {
     try {
-      const userId = 'admin-user'; // In production, get from session
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
       const attendance = await storage.checkIn(userId);
       res.status(201).json(attendance);
     } catch (error: any) {
@@ -201,7 +236,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/attendance/check-out", async (req, res) => {
     try {
-      const userId = 'admin-user'; // In production, get from session
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
       const attendance = await storage.checkOut(userId);
       if (!attendance) {
         return res.status(400).json({ message: "No check-in found for today" });
@@ -215,7 +254,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Leave Routes
   app.get("/api/leaves", async (req, res) => {
     try {
-      const userId = 'admin-user'; // In production, get from session
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
       const leaves = await storage.getLeavesByUser(userId);
       res.json(leaves);
     } catch (error) {
@@ -225,7 +268,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/leave-balance", async (req, res) => {
     try {
-      const userId = 'admin-user'; // In production, get from session
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
       const balance = await storage.getLeaveLedgerByUser(userId);
       res.json(balance);
     } catch (error) {
@@ -407,7 +454,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Reimbursement Routes
   app.get("/api/reimbursements", async (req, res) => {
     try {
-      const userId = 'admin-user'; // In production, get from session
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
       const reimbursements = await storage.getReimbursementsByUser(userId);
       res.json(reimbursements);
     } catch (error) {
@@ -559,7 +610,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payroll Routes
   app.get("/api/payroll", async (req, res) => {
     try {
-      const userId = 'admin-user'; // In production, get from session
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
       const payrolls = await storage.getPayrollsByUser(userId);
       res.json(payrolls);
     } catch (error) {
