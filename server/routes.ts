@@ -50,6 +50,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store user ID in session
       req.session.userId = user.id;
 
+      // Save session explicitly to ensure it persists
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
       // Get user role information
       let roleName = 'Employee';
       if (user.roleId) {
@@ -189,13 +197,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Attendance Routes
-  app.get("/api/attendance", async (req, res) => {
+  app.get("/api/attendance", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
+      const userId = req.session.userId!;
       const fromDate = req.query.fromDate as string;
       const toDate = req.query.toDate as string;
 
@@ -206,13 +210,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/attendance/today-status", async (req, res) => {
+  app.get("/api/attendance/today-status", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
+      const userId = req.session.userId!;
       const todayStatus = await storage.getTodayAttendance(userId);
       res.json(todayStatus || null);
     } catch (error) {
@@ -220,13 +220,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/attendance/check-in", async (req, res) => {
+  app.post("/api/attendance/check-in", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
+      const userId = req.session.userId!;
       const attendance = await storage.checkIn(userId);
       res.status(201).json(attendance);
     } catch (error: any) {
@@ -234,13 +230,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/attendance/check-out", async (req, res) => {
+  app.post("/api/attendance/check-out", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
+      const userId = req.session.userId!;
       const attendance = await storage.checkOut(userId);
       if (!attendance) {
         return res.status(400).json({ message: "No check-in found for today" });
@@ -251,13 +243,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/attendance/manual", async (req, res) => {
-    try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
+  // Middleware to check authentication
+  const requireAuth = (req: any, res: any, next: any) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    next();
+  };
 
+  app.post("/api/attendance/manual", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
       const { attendanceDate, status, checkIn, checkOut } = req.body;
 
       // Calculate duration if both check in and check out are provided
@@ -289,13 +285,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/attendance/:id", async (req, res) => {
+  app.patch("/api/attendance/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
+      const userId = req.session.userId!;
       const { id } = req.params;
       const { attendanceDate, status, checkIn, checkOut } = req.body;
 
