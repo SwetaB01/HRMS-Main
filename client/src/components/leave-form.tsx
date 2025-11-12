@@ -54,10 +54,9 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
   const handleSubmit = async (data: LeaveFormData) => {
     setIsLoading(true);
     try {
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
       const payload = {
         ...data,
-        userId: currentUser.id || 'admin-user',
+        userId: 'current-user', // Will be set by server from session
         companyId: null,
         status: 'Open',
         managerId: null,
@@ -66,6 +65,7 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
       const response = await fetch('/api/leaves', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include session cookie
         body: JSON.stringify(payload),
       });
 

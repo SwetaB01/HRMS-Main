@@ -369,9 +369,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leaves", async (req, res) => {
+  app.post("/api/leaves", requireAuth, async (req, res) => {
     try {
-      const validated = insertLeaveSchema.parse(req.body);
+      const userId = req.session.userId!;
+      const { userId: _, ...leaveData } = req.body; // Remove userId from body
+      const validated = insertLeaveSchema.parse({
+        ...leaveData,
+        userId, // Use authenticated user's ID
+      });
       const leave = await storage.createLeave(validated);
 
       // Send email notification to manager

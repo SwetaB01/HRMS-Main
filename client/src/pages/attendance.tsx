@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Calendar, Clock, CheckCircle, Plus, Edit } from "lucide-react";
+import { Calendar, Clock, Plus, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -254,115 +254,117 @@ export default function Attendance() {
         <div>
           <h1 className="text-3xl font-semibold mb-1">Attendance</h1>
           <p className="text-muted-foreground">
-            Track your attendance and working hours
+            Track your attendance and work hours. To apply for leave, go to the Leaves page.
           </p>
         </div>
-        <Dialog open={isManualEntryOpen} onOpenChange={(open) => {
-          setIsManualEntryOpen(open);
-          if (!open) {
-            setEditingRecord(null);
-            form.reset();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Manual Entry
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingRecord ? "Edit Attendance" : "Add Manual Attendance"}</DialogTitle>
-              <DialogDescription>
-                {editingRecord ? "Update the attendance record" : "Manually add an attendance record"}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="attendanceDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+        <div className="flex gap-2">
+          <Dialog open={isManualEntryOpen} onOpenChange={(open) => {
+            setIsManualEntryOpen(open);
+            if (!open) {
+              setEditingRecord(null);
+              form.reset();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Clock className="h-4 w-4 mr-2" />
+                Manual Entry
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingRecord ? "Edit Attendance" : "Add Manual Attendance"}</DialogTitle>
+                <DialogDescription>
+                  {editingRecord ? "Update the attendance record" : "Manually add an attendance record"}
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="attendanceDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
+                          <Input type="date" {...field} />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Present">Present</SelectItem>
-                          <SelectItem value="Absent">Absent</SelectItem>
-                          <SelectItem value="On Leave">On Leave</SelectItem>
-                          <SelectItem value="Half Day">Half Day</SelectItem>
-                          <SelectItem value="Work From Home">Work From Home</SelectItem>
-                          <SelectItem value="Work from Client Location">Work from Client Location</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="checkIn"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Check In Time (Optional)</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="checkOut"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Check Out Time (Optional)</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setIsManualEntryOpen(false);
-                      setEditingRecord(null);
-                      form.reset();
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={createAttendanceMutation.isPending || updateAttendanceMutation.isPending}>
-                    {editingRecord ? "Update" : "Create"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Present">Present</SelectItem>
+                            <SelectItem value="Absent">Absent</SelectItem>
+                            <SelectItem value="On Leave">On Leave</SelectItem>
+                            <SelectItem value="Half Day">Half Day</SelectItem>
+                            <SelectItem value="Work From Home">Work From Home</SelectItem>
+                            <SelectItem value="Work from Client Location">Work from Client Location</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="checkIn"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Check In Time (Optional)</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="checkOut"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Check Out Time (Optional)</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsManualEntryOpen(false);
+                        setEditingRecord(null);
+                        form.reset();
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={createAttendanceMutation.isPending || updateAttendanceMutation.isPending}>
+                      {editingRecord ? "Update" : "Create"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
