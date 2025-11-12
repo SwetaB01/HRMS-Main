@@ -22,6 +22,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
+      // Check if user account is active
+      if (user.status !== "Active") {
+        return res.status(403).json({ message: "Account is inactive. Please contact administrator." });
+      }
+
       // Get user role information
       let roleName = 'Employee';
       if (user.roleId) {
