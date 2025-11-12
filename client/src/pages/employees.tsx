@@ -128,6 +128,7 @@ export default function Employees() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Employee ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Department</TableHead>
@@ -155,6 +156,9 @@ export default function Employees() {
             ) : filteredEmployees && filteredEmployees.length > 0 ? (
               filteredEmployees.map((employee) => (
                 <TableRow key={employee.id} data-testid={`row-employee-${employee.id}`}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {employee.id.substring(0, 8)}...
+                  </TableCell>
                   <TableCell className="font-medium">
                     {employee.firstName} {employee.lastName}
                   </TableCell>
@@ -194,7 +198,7 @@ export default function Employees() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No employees found
                 </TableCell>
               </TableRow>

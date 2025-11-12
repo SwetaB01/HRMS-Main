@@ -10,7 +10,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      
+
       const user = await storage.getUserProfileByUsername(username);
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
@@ -48,10 +48,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/employees", async (req, res) => {
     try {
       const employees = await storage.getAllUserProfiles();
-      
+
       // Remove passwordHash from all employee records before returning
       const sanitizedEmployees = employees.map(({ passwordHash, ...employee }) => employee);
-      
+
       res.json(sanitizedEmployees);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch employees" });
@@ -62,19 +62,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Validate request body with schema (it expects password field)
       const validated = insertUserProfileSchema.parse(req.body);
-      
+
       // Create employee with validated data (storage will hash password)
       const employee = await storage.createUserProfile(validated);
-      
+
       // Return employee data without password hash
       const { passwordHash, ...employeeData } = employee;
       res.status(201).json(employeeData);
     } catch (error: any) {
       console.error('Employee creation error:', error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: error.errors
         });
       }
       res.status(400).json({ message: "Failed to create employee" });
@@ -85,33 +85,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { password, ...otherFields } = req.body;
-      
+
       // Build update payload - include password only if provided
       const updates: any = { ...otherFields };
       if (password && password.trim()) {
         updates.password = password;
       }
-      
+
       // Validate the update payload (partial schema validation)
       // For PATCH, we only validate fields that are present
       const updateSchema = insertUserProfileSchema.partial();
       const validated = updateSchema.parse(updates);
-      
+
       // Update employee (storage will hash password if provided)
       const employee = await storage.updateUserProfile(id, validated);
       if (!employee) {
         return res.status(404).json({ message: "Employee not found" });
       }
-      
+
       // Return employee data without password hash
       const { passwordHash, ...employeeData } = employee;
       res.json(employeeData);
     } catch (error: any) {
       console.error('Employee update error:', error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: error.errors
         });
       }
       res.status(400).json({ message: "Failed to update employee" });
@@ -147,7 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.query.userId as string || 'admin-user'; // Default to admin for now
       const fromDate = req.query.fromDate as string;
       const toDate = req.query.toDate as string;
-      
+
       const attendance = await storage.getAttendanceByUser(userId, fromDate, toDate);
       res.json(attendance);
     } catch (error) {
@@ -213,14 +213,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validated = insertLeaveSchema.parse(req.body);
       const leave = await storage.createLeave(validated);
-      
+
       // Send email notification to manager
       try {
         const employee = await storage.getUserProfile(leave.userId);
         const manager = leave.managerId ? await storage.getUserProfile(leave.managerId) : null;
         const leaveType = await storage.getAllLeaveTypes();
         const leaveTypeName = leaveType.find(lt => lt.id === leave.leaveTypeId)?.name || 'Leave';
-        
+
         if (employee && manager && manager.email) {
           await emailService.sendLeaveApplicationNotification(
             `${employee.firstName} ${employee.lastName}`,
@@ -235,7 +235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Failed to send leave application email:', emailError);
         // Continue even if email fails
       }
-      
+
       res.status(201).json(leave);
     } catch (error) {
       res.status(400).json({ message: "Failed to apply for leave" });
@@ -247,18 +247,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { comments } = req.body;
       const managerId = 'admin-user'; // In production, get from session
-      
+
       const leave = await storage.approveLeave(id, managerId, comments);
       if (!leave) {
         return res.status(404).json({ message: "Leave not found" });
       }
-      
+
       // Send email notification to employee
       try {
         const employee = await storage.getUserProfile(leave.userId);
         const leaveTypes = await storage.getAllLeaveTypes();
         const leaveTypeName = leaveTypes.find(lt => lt.id === leave.leaveTypeId)?.name || 'Leave';
-        
+
         if (employee && employee.email) {
           await emailService.sendLeaveApprovalNotification(
             employee.email,
@@ -274,7 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Failed to send leave approval email:', emailError);
         // Continue even if email fails
       }
-      
+
       res.json(leave);
     } catch (error) {
       res.status(500).json({ message: "Failed to approve leave" });
@@ -286,22 +286,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { comments } = req.body;
       const managerId = 'admin-user'; // In production, get from session
-      
+
       if (!comments) {
         return res.status(400).json({ message: "Comments are required for rejection" });
       }
-      
+
       const leave = await storage.rejectLeave(id, managerId, comments);
       if (!leave) {
         return res.status(404).json({ message: "Leave not found" });
       }
-      
+
       // Send email notification to employee
       try {
         const employee = await storage.getUserProfile(leave.userId);
         const leaveTypes = await storage.getAllLeaveTypes();
         const leaveTypeName = leaveTypes.find(lt => lt.id === leave.leaveTypeId)?.name || 'Leave';
-        
+
         if (employee && employee.email) {
           await emailService.sendLeaveApprovalNotification(
             employee.email,
@@ -317,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Failed to send leave rejection email:', emailError);
         // Continue even if email fails
       }
-      
+
       res.json(leave);
     } catch (error) {
       res.status(500).json({ message: "Failed to reject leave" });
@@ -395,14 +395,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validated = insertReimbursementSchema.parse(req.body);
       const reimbursement = await storage.createReimbursement(validated);
-      
+
       // Send email notification to manager
       try {
         const employee = await storage.getUserProfile(reimbursement.userId);
         const manager = reimbursement.managerId ? await storage.getUserProfile(reimbursement.managerId) : null;
         const reimbTypes = await storage.getAllReimbursementTypes();
         const reimbTypeName = reimbTypes.find(rt => rt.id === reimbursement.reimbursementTypeId)?.name || 'Expense';
-        
+
         if (employee && manager && manager.email) {
           await emailService.sendReimbursementNotification(
             `${employee.firstName} ${employee.lastName}`,
@@ -416,7 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Failed to send reimbursement notification email:', emailError);
         // Continue even if email fails
       }
-      
+
       res.status(201).json(reimbursement);
     } catch (error) {
       res.status(400).json({ message: "Failed to create reimbursement" });
@@ -428,18 +428,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { comments } = req.body;
       const managerId = 'admin-user'; // In production, get from session
-      
+
       const reimbursement = await storage.approveReimbursementByManager(id, managerId, comments);
       if (!reimbursement) {
         return res.status(404).json({ message: "Reimbursement not found" });
       }
-      
+
       // Send email notification to employee
       try {
         const employee = await storage.getUserProfile(reimbursement.userId);
         const reimbTypes = await storage.getAllReimbursementTypes();
         const reimbTypeName = reimbTypes.find(rt => rt.id === reimbursement.reimbursementTypeId)?.name || 'Expense';
-        
+
         if (employee && employee.email) {
           await emailService.sendReimbursementApprovalNotification(
             employee.email,
@@ -454,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Failed to send reimbursement approval email:', emailError);
         // Continue even if email fails
       }
-      
+
       res.json(reimbursement);
     } catch (error) {
       res.status(500).json({ message: "Failed to approve reimbursement" });
@@ -466,18 +466,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { comments } = req.body;
       const accountantId = 'admin-user'; // In production, get from session
-      
+
       const reimbursement = await storage.approveReimbursementByAccountant(id, accountantId, comments);
       if (!reimbursement) {
         return res.status(404).json({ message: "Reimbursement not found" });
       }
-      
+
       // Send email notification to employee
       try {
         const employee = await storage.getUserProfile(reimbursement.userId);
         const reimbTypes = await storage.getAllReimbursementTypes();
         const reimbTypeName = reimbTypes.find(rt => rt.id === reimbursement.reimbursementTypeId)?.name || 'Expense';
-        
+
         if (employee && employee.email) {
           await emailService.sendReimbursementApprovalNotification(
             employee.email,
@@ -492,7 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Failed to send reimbursement approval email:', emailError);
         // Continue even if email fails
       }
-      
+
       res.json(reimbursement);
     } catch (error) {
       res.status(500).json({ message: "Failed to approve reimbursement" });
@@ -504,18 +504,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { comments } = req.body;
       const userId = 'admin-user'; // In production, get from session
-      
+
       if (!comments) {
         return res.status(400).json({ message: "Comments are required for rejection" });
       }
-      
+
       const reimbursement = await storage.rejectReimbursement(id, userId, comments);
       if (!reimbursement) {
         return res.status(404).json({ message: "Reimbursement not found" });
       }
-      
+
       // In production, send email notification here
-      
+
       res.json(reimbursement);
     } catch (error) {
       res.status(500).json({ message: "Failed to reject reimbursement" });
@@ -557,12 +557,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const approverId = 'admin-user'; // In production, get from session
-      
+
       const payroll = await storage.approvePayroll(id, approverId);
       if (!payroll) {
         return res.status(404).json({ message: "Payroll not found" });
       }
-      
+
       res.json(payroll);
     } catch (error) {
       res.status(500).json({ message: "Failed to approve payroll" });
