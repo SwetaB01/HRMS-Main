@@ -256,12 +256,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId!;
       const { attendanceDate, status, checkIn, checkOut } = req.body;
 
-      // Calculate duration if both check in and check out are provided
+      // Convert time strings to proper Date objects or null
+      let checkInDate = null;
+      let checkOutDate = null;
       let totalDuration = null;
-      if (checkIn && checkOut) {
-        const checkInTime = new Date(checkIn).getTime();
-        const checkOutTime = new Date(checkOut).getTime();
-        const durationMs = checkOutTime - checkInTime;
+
+      if (checkIn) {
+        checkInDate = new Date(checkIn);
+      }
+
+      if (checkOut) {
+        checkOutDate = new Date(checkOut);
+      }
+
+      // Calculate duration if both check in and check out are provided
+      if (checkInDate && checkOutDate) {
+        const durationMs = checkOutDate.getTime() - checkInDate.getTime();
         totalDuration = (durationMs / (1000 * 60 * 60)).toFixed(2);
       }
 
@@ -269,8 +279,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         attendanceDate,
         status,
-        checkIn: checkIn || null,
-        checkOut: checkOut || null,
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
         totalDuration,
         earlySignIn: false,
         earlySignOut: false,
@@ -281,6 +291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(attendance);
     } catch (error: any) {
+      console.error('Attendance creation error:', error);
       res.status(400).json({ message: error.message || "Failed to create attendance" });
     }
   });
@@ -291,20 +302,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { attendanceDate, status, checkIn, checkOut } = req.body;
 
-      // Calculate duration if both check in and check out are provided
+      // Convert time strings to proper Date objects or null
+      let checkInDate = undefined;
+      let checkOutDate = undefined;
       let totalDuration = null;
-      if (checkIn && checkOut) {
-        const checkInTime = new Date(checkIn).getTime();
-        const checkOutTime = new Date(checkOut).getTime();
-        const durationMs = checkOutTime - checkInTime;
+
+      if (checkIn !== undefined) {
+        checkInDate = checkIn ? new Date(checkIn) : null;
+      }
+
+      if (checkOut !== undefined) {
+        checkOutDate = checkOut ? new Date(checkOut) : null;
+      }
+
+      // Calculate duration if both check in and check out are provided
+      if (checkInDate && checkOutDate) {
+        const durationMs = checkOutDate.getTime() - checkInDate.getTime();
         totalDuration = (durationMs / (1000 * 60 * 60)).toFixed(2);
       }
 
       const updates: any = {};
       if (attendanceDate) updates.attendanceDate = attendanceDate;
       if (status) updates.status = status;
-      if (checkIn !== undefined) updates.checkIn = checkIn;
-      if (checkOut !== undefined) updates.checkOut = checkOut;
+      if (checkInDate !== undefined) updates.checkIn = checkInDate;
+      if (checkOutDate !== undefined) updates.checkOut = checkOutDate;
       if (totalDuration !== null) updates.totalDuration = totalDuration;
 
       const attendance = await storage.updateAttendance(id, updates);
@@ -314,6 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(attendance);
     } catch (error: any) {
+      console.error('Attendance update error:', error);
       res.status(400).json({ message: error.message || "Failed to update attendance" });
     }
   });
