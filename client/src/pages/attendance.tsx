@@ -85,7 +85,7 @@ export default function Attendance() {
         checkIn: data.checkIn ? new Date(`${data.attendanceDate}T${data.checkIn}:00`).toISOString() : null,
         checkOut: data.checkOut ? new Date(`${data.attendanceDate}T${data.checkOut}:00`).toISOString() : null,
       };
-      
+
       const response = await fetch('/api/attendance/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,7 +126,7 @@ export default function Attendance() {
         checkIn: data.checkIn ? new Date(`${data.attendanceDate}T${data.checkIn}:00`).toISOString() : null,
         checkOut: data.checkOut ? new Date(`${data.attendanceDate}T${data.checkOut}:00`).toISOString() : null,
       };
-      
+
       const response = await fetch(`/api/attendance/${data.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -184,15 +184,27 @@ export default function Attendance() {
     try {
       const response = await fetch('/api/attendance/check-in', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
-      if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/attendance/today-status"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
       }
-    } catch (error) {
-      console.error('Check-in failed:', error);
+
+      toast({
+        title: "Success",
+        description: "Checked in successfully",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance/today-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -200,15 +212,27 @@ export default function Attendance() {
     try {
       const response = await fetch('/api/attendance/check-out', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
-      if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/attendance/today-status"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
       }
-    } catch (error) {
-      console.error('Check-out failed:', error);
+
+      toast({
+        title: "Success",
+        description: "Checked out successfully",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance/today-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
