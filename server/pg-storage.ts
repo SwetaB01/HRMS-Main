@@ -78,7 +78,7 @@ export class PostgresStorage implements IStorage {
       updates.passwordHash = await bcrypt.hash(updates.password, 10);
       delete updates.password;
     }
-    
+
     const [updated] = await db.update(userProfiles)
       .set(updates)
       .where(eq(userProfiles.id, id))
@@ -292,7 +292,7 @@ export class PostgresStorage implements IStorage {
   async checkIn(userId: string): Promise<Attendance> {
     const today = new Date().toISOString().split('T')[0];
     const existing = await this.getTodayAttendance(userId);
-    
+
     if (existing) {
       throw new Error('Already checked in today');
     }
@@ -310,14 +310,14 @@ export class PostgresStorage implements IStorage {
       lateSignOut: false,
       regularizationRequested: false,
     }).returning();
-    
+
     return newAttendance;
   }
 
   async checkOut(userId: string): Promise<Attendance | undefined> {
     const today = new Date().toISOString().split('T')[0];
     const existing = await this.getTodayAttendance(userId);
-    
+
     if (!existing || existing.checkOut) {
       return undefined;
     }
@@ -334,7 +334,7 @@ export class PostgresStorage implements IStorage {
       })
       .where(eq(attendance.id, existing.id))
       .returning();
-    
+
     return updated;
   }
 
@@ -466,12 +466,12 @@ export class PostgresStorage implements IStorage {
     pendingRegularizations: number;
   }> {
     const today = new Date().toISOString().split('T')[0];
-    
+
     const allEmployees = await db.select().from(userProfiles);
     const todayAttendance = await db.select().from(attendance).where(eq(attendance.attendanceDate, today));
     const pendingLeaves = await db.select().from(leaves).where(eq(leaves.status, 'Open'));
     const pendingReimb = await db.select().from(reimbursements).where(eq(reimbursements.status, 'Pending'));
-    
+
     return {
       totalEmployees: allEmployees.length,
       presentToday: todayAttendance.filter(a => a.status === 'Present').length,
