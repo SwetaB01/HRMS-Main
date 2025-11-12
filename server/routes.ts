@@ -68,8 +68,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body with schema (it expects password field)
       const validated = insertUserProfileSchema.parse(req.body);
 
+      // Store the plain password before hashing for email notification
+      const plainPassword = validated.password;
+
       // Create employee with validated data (storage will hash password)
       const employee = await storage.createUserProfile(validated);
+
+      // Send welcome email to new employee
+      try {
+        if (employee.email) {
+          await emailService.sendNewEmployeeWelcome(
+            employee.email,
+            `${employee.firstName} ${employee.lastName}`,
+            employee.username,
+            plainPassword,
+            employee.joiningDate || undefined
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send welcome email to new employee:', emailError);
+        // Continue even if email fails - don't block employee creation
+      }
 
       // Return employee data without password hash
       const { passwordHash, ...employeeData } = employee;

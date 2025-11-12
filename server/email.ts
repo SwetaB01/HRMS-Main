@@ -320,6 +320,58 @@ class EmailService {
     
     return this.sendEmail(employeeEmail, subject, html);
   }
+
+  async sendNewEmployeeWelcome(
+    employeeEmail: string,
+    employeeName: string,
+    username: string,
+    temporaryPassword: string,
+    joiningDate?: string
+  ): Promise<boolean> {
+    const subject = `Welcome to MIDCAI - Your Account Details`;
+    
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #F23F00; padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">MIDCAI HRMS</h1>
+          <p style="color: #F3EDED; margin: 5px 0 0 0;">Unfolding Perpetually</p>
+        </div>
+        <div style="padding: 30px; background-color: #f9f9f9;">
+          <h2 style="color: #100D08; margin-top: 0;">Welcome to MIDCAI!</h2>
+          <p>Dear ${employeeName},</p>
+          <p>We are excited to have you join our team! Your employee account has been created in the MIDCAI HRMS system.</p>
+          
+          ${joiningDate ? `<p><strong>Joining Date:</strong> ${joiningDate}</p>` : ''}
+          
+          <div style="background-color: white; padding: 20px; border-left: 4px solid #F23F00; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #100D08;">Your Login Credentials</h3>
+            <p style="margin: 5px 0;"><strong>Username:</strong> ${username}</p>
+            <p style="margin: 5px 0;"><strong>Temporary Password:</strong> ${temporaryPassword}</p>
+            <p style="margin: 15px 0 5px 0; color: #ef4444;"><strong>Important:</strong> Please change your password after your first login for security purposes.</p>
+          </div>
+          
+          <p>You can access the HRMS system to:</p>
+          <ul style="line-height: 1.8;">
+            <li>View and update your profile</li>
+            <li>Apply for leaves</li>
+            <li>Mark attendance</li>
+            <li>Submit reimbursement requests</li>
+            <li>View payslips and more</li>
+          </ul>
+          
+          <p>If you have any questions or need assistance, please contact the HR department.</p>
+          
+          <p>We look forward to working with you!</p>
+          
+          <div style="margin-top: 30px; text-align: center;">
+            <p style="color: #666; font-size: 12px;">This is an automated notification from MIDCAI HRMS</p>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    return this.sendEmail(employeeEmail, subject, html);
+  }
 }
 
 export const emailService = new EmailService();
