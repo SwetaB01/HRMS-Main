@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Calendar, Clock, CheckCircle } from "lucide-react";
+import { Calendar, Clock, CheckCircle, Plus, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,11 +14,51 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Attendance as AttendanceType } from "@shared/schema";
 import { format } from "date-fns";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+
+const attendanceFormSchema = z.object({
+  attendanceDate: z.string().min(1, "Date is required"),
+  status: z.string().min(1, "Status is required"),
+  checkIn: z.string().optional(),
+  checkOut: z.string().optional(),
+});
+
+type AttendanceFormValues = z.infer<typeof attendanceFormSchema>;
 
 export default function Attendance() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<AttendanceType | null>(null);
+  const { toast } = useToast();
 
   const { data: attendanceRecords, isLoading } = useQuery<AttendanceType[]>({
     queryKey: ["/api/attendance", selectedDate],
@@ -27,6 +67,118 @@ export default function Attendance() {
   const { data: todayStatus } = useQuery({
     queryKey: ["/api/attendance/today-status"],
   });
+
+  const form = useForm<AttendanceFormValues>({
+    resolver: zodResolver(attendanceFormSchema),
+    defaultValues: {
+      attendanceDate: new Date().toISOString().split('T')[0],
+      status: "Present",
+      checkIn: "",
+      checkOut: "",
+    },
+  });
+
+  const createAttendanceMutation = useMutation({
+    mutationFn: async (data: AttendanceFormValues) => {
+      const payload = {
+        ...data,
+        checkIn: data.checkIn ? new Date(`${data.attendanceDate}T${data.checkIn}:00`).toISOString() : null,
+        checkOut: data.checkOut ? new Date(`${data.attendanceDate}T${data.checkOut}:00`).toISOString() : null,
+      };
+      
+      const response = await fetch('/api/attendance/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create attendance');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance/today-status"] });
+      setIsManualEntryOpen(false);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Attendance record created successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateAttendanceMutation = useMutation({
+    mutationFn: async (data: AttendanceFormValues & { id: string }) => {
+      const payload = {
+        ...data,
+        checkIn: data.checkIn ? new Date(`${data.attendanceDate}T${data.checkIn}:00`).toISOString() : null,
+        checkOut: data.checkOut ? new Date(`${data.attendanceDate}T${data.checkOut}:00`).toISOString() : null,
+      };
+      
+      const response = await fetch(`/api/attendance/${data.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update attendance');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance/today-status"] });
+      setIsManualEntryOpen(false);
+      setEditingRecord(null);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Attendance record updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: AttendanceFormValues) => {
+    if (editingRecord) {
+      updateAttendanceMutation.mutate({ ...data, id: editingRecord.id });
+    } else {
+      createAttendanceMutation.mutate(data);
+    }
+  };
+
+  const handleEdit = (record: AttendanceType) => {
+    setEditingRecord(record);
+    form.reset({
+      attendanceDate: record.attendanceDate,
+      status: record.status,
+      checkIn: record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : "",
+      checkOut: record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : "",
+    });
+    setIsManualEntryOpen(true);
+  };
 
   const handleCheckIn = async () => {
     try {
@@ -74,11 +226,119 @@ export default function Attendance() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold mb-1">Attendance</h1>
-        <p className="text-muted-foreground">
-          Track your attendance and working hours
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold mb-1">Attendance</h1>
+          <p className="text-muted-foreground">
+            Track your attendance and working hours
+          </p>
+        </div>
+        <Dialog open={isManualEntryOpen} onOpenChange={(open) => {
+          setIsManualEntryOpen(open);
+          if (!open) {
+            setEditingRecord(null);
+            form.reset();
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Manual Entry
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingRecord ? "Edit Attendance" : "Add Manual Attendance"}</DialogTitle>
+              <DialogDescription>
+                {editingRecord ? "Update the attendance record" : "Manually add an attendance record"}
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="attendanceDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Present">Present</SelectItem>
+                          <SelectItem value="Absent">Absent</SelectItem>
+                          <SelectItem value="On Leave">On Leave</SelectItem>
+                          <SelectItem value="Half Day">Half Day</SelectItem>
+                          <SelectItem value="Work From Home">Work From Home</SelectItem>
+                          <SelectItem value="Work from Client Location">Work from Client Location</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="checkIn"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Check In Time (Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="checkOut"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Check Out Time (Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setIsManualEntryOpen(false);
+                      setEditingRecord(null);
+                      form.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createAttendanceMutation.isPending || updateAttendanceMutation.isPending}>
+                    {editingRecord ? "Update" : "Create"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -186,13 +446,23 @@ export default function Attendance() {
                       </TableCell>
                       <TableCell>{record.totalDuration || '-'} hrs</TableCell>
                       <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          data-testid={`button-regularize-${record.id}`}
-                        >
-                          Regularize
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(record)}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            data-testid={`button-regularize-${record.id}`}
+                          >
+                            Regularize
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

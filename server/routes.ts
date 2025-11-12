@@ -251,6 +251,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/attendance/manual", async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { attendanceDate, status, checkIn, checkOut } = req.body;
+
+      // Calculate duration if both check in and check out are provided
+      let totalDuration = null;
+      if (checkIn && checkOut) {
+        const checkInTime = new Date(checkIn).getTime();
+        const checkOutTime = new Date(checkOut).getTime();
+        const durationMs = checkOutTime - checkInTime;
+        totalDuration = (durationMs / (1000 * 60 * 60)).toFixed(2);
+      }
+
+      const attendance = await storage.createAttendance({
+        userId,
+        attendanceDate,
+        status,
+        checkIn: checkIn || null,
+        checkOut: checkOut || null,
+        totalDuration,
+        earlySignIn: false,
+        earlySignOut: false,
+        lateSignIn: false,
+        lateSignOut: false,
+        regularizationRequested: false,
+      });
+
+      res.status(201).json(attendance);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to create attendance" });
+    }
+  });
+
+  app.patch("/api/attendance/:id", async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { id } = req.params;
+      const { attendanceDate, status, checkIn, checkOut } = req.body;
+
+      // Calculate duration if both check in and check out are provided
+      let totalDuration = null;
+      if (checkIn && checkOut) {
+        const checkInTime = new Date(checkIn).getTime();
+        const checkOutTime = new Date(checkOut).getTime();
+        const durationMs = checkOutTime - checkInTime;
+        totalDuration = (durationMs / (1000 * 60 * 60)).toFixed(2);
+      }
+
+      const updates: any = {};
+      if (attendanceDate) updates.attendanceDate = attendanceDate;
+      if (status) updates.status = status;
+      if (checkIn !== undefined) updates.checkIn = checkIn;
+      if (checkOut !== undefined) updates.checkOut = checkOut;
+      if (totalDuration !== null) updates.totalDuration = totalDuration;
+
+      const attendance = await storage.updateAttendance(id, updates);
+      if (!attendance) {
+        return res.status(404).json({ message: "Attendance record not found" });
+      }
+
+      res.json(attendance);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to update attendance" });
+    }
+  });
+
   // Leave Routes
   app.get("/api/leaves", async (req, res) => {
     try {
