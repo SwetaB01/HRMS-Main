@@ -196,6 +196,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Middleware to check authentication
+  const requireAuth = (req: any, res: any, next: any) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    next();
+  };
+
   // Attendance Routes
   app.get("/api/attendance", requireAuth, async (req, res) => {
     try {
@@ -242,14 +250,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Check-out failed" });
     }
   });
-
-  // Middleware to check authentication
-  const requireAuth = (req: any, res: any, next: any) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    next();
-  };
 
   app.post("/api/attendance/manual", requireAuth, async (req, res) => {
     try {
