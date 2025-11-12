@@ -36,6 +36,38 @@ export default function Employees() {
     queryKey: ["/api/employees"],
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/employees/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete employee');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      toast({
+        title: "Success",
+        description: "Employee deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDelete = (employee: UserProfile) => {
+    if (confirm(`Are you sure you want to delete ${employee.firstName} ${employee.lastName}?`)) {
+      deleteMutation.mutate(employee.id);
+    }
+  };
+
   const filteredEmployees = employees?.filter((emp) =>
     `${emp.firstName} ${emp.lastName} ${emp.email} ${emp.username}`
       .toLowerCase()
@@ -151,6 +183,8 @@ export default function Employees() {
                         variant="ghost"
                         size="icon"
                         data-testid={`button-delete-${employee.id}`}
+                        onClick={() => handleDelete(employee)}
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
