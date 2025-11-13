@@ -31,6 +31,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -54,10 +55,18 @@ const attendanceFormSchema = z.object({
 
 type AttendanceFormValues = z.infer<typeof attendanceFormSchema>;
 
+const regularizationFormSchema = z.object({
+  reason: z.string().min(10, "Reason must be at least 10 characters"),
+});
+
+type RegularizationFormValues = z.infer<typeof regularizationFormSchema>;
+
 export default function Attendance() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceType | null>(null);
+  const [isRegularizationOpen, setIsRegularizationOpen] = useState(false);
+  const [regularizingRecord, setRegularizingRecord] = useState<AttendanceType | null>(null);
   const { toast } = useToast();
 
   const { data: attendanceRecords, isLoading } = useQuery<AttendanceType[]>({
@@ -75,6 +84,13 @@ export default function Attendance() {
       status: "Present",
       checkIn: "",
       checkOut: "",
+    },
+  });
+
+  const regularizationForm = useForm<RegularizationFormValues>({
+    resolver: zodResolver(regularizationFormSchema),
+    defaultValues: {
+      reason: "",
     },
   });
 
@@ -161,6 +177,42 @@ export default function Attendance() {
     },
   });
 
+  const regularizationMutation = useMutation({
+    mutationFn: async (data: RegularizationFormValues & { id: string }) => {
+      const response = await fetch(`/api/attendance/${data.id}/regularize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reason: data.reason }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to request regularization');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance/today-status"] });
+      setIsRegularizationOpen(false);
+      setRegularizingRecord(null);
+      regularizationForm.reset();
+      toast({
+        title: "Success",
+        description: "Regularization request submitted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: AttendanceFormValues) => {
     if (editingRecord) {
       updateAttendanceMutation.mutate({ ...data, id: editingRecord.id });
@@ -178,6 +230,18 @@ export default function Attendance() {
       checkOut: record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : "",
     });
     setIsManualEntryOpen(true);
+  };
+
+  const handleRegularize = (record: AttendanceType) => {
+    setRegularizingRecord(record);
+    regularizationForm.reset({ reason: "" });
+    setIsRegularizationOpen(true);
+  };
+
+  const onRegularizationSubmit = (data: RegularizationFormValues) => {
+    if (regularizingRecord) {
+      regularizationMutation.mutate({ ...data, id: regularizingRecord.id });
+    }
   };
 
   const handleCheckIn = async () => {
@@ -484,6 +548,7 @@ export default function Attendance() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => handleRegularize(record)}
                             data-testid={`button-regularize-${record.id}`}
                           >
                             Regularize
@@ -504,6 +569,59 @@ export default function Attendance() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isRegularizationOpen} onOpenChange={(open) => {
+        setIsRegularizationOpen(open);
+        if (!open) {
+          setRegularizingRecord(null);
+          regularizationForm.reset();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Attendance Regularization</DialogTitle>
+            <DialogDescription>
+              Submit a request to regularize your attendance for {regularizingRecord?.attendanceDate}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...regularizationForm}>
+            <form onSubmit={regularizationForm.handleSubmit(onRegularizationSubmit)} className="space-y-4">
+              <FormField
+                control={regularizationForm.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reason for Regularization</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Explain why you need to regularize this attendance..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsRegularizationOpen(false);
+                    setRegularizingRecord(null);
+                    regularizationForm.reset();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={regularizationMutation.isPending}>
+                  {regularizationMutation.isPending ? "Submitting..." : "Submit Request"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

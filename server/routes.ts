@@ -340,6 +340,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/attendance/:id/regularize", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      if (!reason) {
+        return res.status(400).json({ message: "Reason is required" });
+      }
+
+      const attendance = await storage.updateAttendance(id, {
+        regularizationRequested: true,
+        regularizationReason: reason,
+        regularizationStatus: 'Pending',
+      });
+
+      if (!attendance) {
+        return res.status(404).json({ message: "Attendance record not found" });
+      }
+
+      // Send email notification to manager
+      try {
+        const employee = await storage.getUserProfile(userId);
+        const manager = employee?.managerId ? await storage.getUserProfile(employee.managerId) : null;
+
+        if (employee && manager && manager.email) {
+          await emailService.sendAttendanceRegularizationNotification(
+            `${employee.firstName} ${employee.lastName}`,
+            manager.email,
+            attendance.attendanceDate,
+            reason
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send regularization notification email:', emailError);
+        // Continue even if email fails
+      }
+
+      res.json(attendance);
+    } catch (error: any) {
+      console.error('Regularization request error:', error);
+      res.status(400).json({ message: error.message || "Failed to request regularization" });
+    }
+  });
+
   // Leave Routes
   app.get("/api/leaves", async (req, res) => {
     try {
