@@ -11,6 +11,7 @@ import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import ProfilePage from "@/pages/profile";
 import Employees from "@/pages/employees";
+import Roles from "@/pages/roles";
 import Attendance from "@/pages/attendance";
 import Leaves from "@/pages/leaves";
 import Holidays from "@/pages/holidays";
@@ -25,6 +26,7 @@ function Router({ currentUser, onLogout }: { currentUser: any; onLogout: () => v
       <Route path="/" component={Dashboard} />
       <Route path="/profile" component={ProfilePage} />
       <Route path="/employees" component={Employees} />
+      <Route path="/roles" component={Roles} />
       <Route path="/attendance" component={Attendance} />
       <Route path="/leaves" component={Leaves} />
       <Route path="/holidays" component={Holidays} />

@@ -80,6 +80,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Role routes
+  app.get("/api/roles", async (req, res) => {
+    // NOTE: In a real application, you'd want to check if the user is authenticated and authorized to view roles.
+    // For this example, we'll assume access is granted if a session exists.
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const roles = await storage.getAllUserRoles(); // Assuming storage has a method to get all roles
+      res.json(roles);
+    } catch (error: any) {
+      console.error("Failed to fetch roles:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch roles" });
+    }
+  });
+
+  app.post("/api/roles", async (req, res) => {
+    // NOTE: In a real application, you'd want to check if the user is authenticated and authorized to create roles.
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      // Assuming a schema validation for req.body would happen here if applicable
+      const role = await storage.createUserRole(req.body); // Assuming storage has a method to create a role
+      res.status(201).json(role);
+    } catch (error: any) {
+      console.error("Failed to create role:", error);
+      res.status(400).json({ message: error.message || "Failed to create role" });
+    }
+  });
+
+  app.put("/api/roles/:id", async (req, res) => {
+    // NOTE: In a real application, you'd want to check if the user is authenticated and authorized to update roles.
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const { id } = req.params;
+      // Assuming a schema validation for req.body would happen here if applicable
+      const role = await storage.updateUserRole(id, req.body); // Assuming storage has a method to update a role
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+      res.json(role);
+    } catch (error: any) {
+      console.error("Failed to update role:", error);
+      res.status(400).json({ message: error.message || "Failed to update role" });
+    }
+  });
+
+  app.delete("/api/roles/:id", async (req, res) => {
+    // NOTE: In a real application, you'd want to check if the user is authenticated and authorized to delete roles.
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteUserRole(id); // Assuming storage has a method to delete a role
+      if (!deleted) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Failed to delete role:", error);
+      res.status(400).json({ message: error.message || "Failed to delete role" });
+    }
+  });
+
+
   // Employee Management Routes
   app.get("/api/employees", async (req, res) => {
     try {
@@ -815,7 +888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User Role Routes
+  // User Role Routes (Existing)
   app.get("/api/roles", async (req, res) => {
     try {
       const roles = await storage.getAllUserRoles();

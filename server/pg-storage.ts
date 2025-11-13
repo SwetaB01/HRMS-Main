@@ -493,4 +493,41 @@ export class PostgresStorage implements IStorage {
       pendingRegularizations: todayAttendance.filter(a => a.regularizationRequested && !a.regularizationStatus).length,
     };
   }
+
+  async getAllRoles(): Promise<UserRole[]> {
+    return await this.db.select().from(userRoles);
+  }
+
+  async createRole(data: Omit<UserRole, 'id'>): Promise<UserRole> {
+    const [role] = await this.db.insert(userRoles).values(data).returning();
+    return role;
+  }
+
+  async updateRole(id: string, data: Partial<UserRole>): Promise<UserRole> {
+    const [role] = await this.db
+      .update(userRoles)
+      .set(data)
+      .where(eq(userRoles.id, id))
+      .returning();
+
+    if (!role) {
+      throw new Error('Role not found');
+    }
+    return role;
+  }
+
+  async deleteRole(id: string): Promise<void> {
+    const result = await this.db
+      .delete(userRoles)
+      .where(eq(userRoles.id, id))
+      .returning();
+
+    if (result.length === 0) {
+      throw new Error('Role not found');
+    }
+  }
+
+  async getAllEmployees(): Promise<UserProfile[]> {
+    return await this.db.select().from(userProfiles);
+  }
 }

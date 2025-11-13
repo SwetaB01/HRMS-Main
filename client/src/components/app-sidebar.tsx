@@ -1,12 +1,12 @@
-import { 
-  Calendar, 
-  CalendarDays, 
-  Home, 
-  Users, 
-  Sun, 
-  Receipt, 
-  DollarSign, 
-  Building, 
+import {
+  Calendar,
+  CalendarDays,
+  Home,
+  Users,
+  Sun,
+  Receipt,
+  DollarSign,
+  Building,
   FileText,
   LogOut,
   LayoutDashboard,
@@ -94,9 +94,9 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
     <Sidebar>
       <SidebarHeader className="p-6 pb-4">
         <div className="flex items-center gap-3">
-          <img 
-            src={midcaiLogo} 
-            alt="MIDCAI Logo" 
+          <img
+            src={midcaiLogo}
+            alt="MIDCAI Logo"
             className="h-10 w-10"
           />
           <div>
@@ -112,8 +112,8 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
+                  <SidebarMenuButton
+                    asChild
                     isActive={location === item.url}
                     data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                   >
@@ -129,6 +129,14 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                   <Link href="/profile">
                     <User className="h-4 w-4" />
                     <span>My Profile</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === "/roles"}>
+                  <Link to="/roles">
+                    <Users className="h-4 w-4" />
+                    <span>Roles</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -155,8 +163,8 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                 </p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full"
               onClick={onLogout}
               data-testid="button-logout"

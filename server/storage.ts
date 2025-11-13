@@ -1,4 +1,4 @@
-import { 
+import {
   type UserProfile, type InsertUserProfile,
   type UserType, type InsertUserType,
   type UserRole, type InsertUserRole,
@@ -16,6 +16,7 @@ import {
   type Payroll, type InsertPayroll,
 } from "@shared/schema";
 import bcrypt from "bcryptjs";
+import { randomUUID } from 'crypto';
 
 export interface IStorage {
   // User Profile Operations
@@ -237,14 +238,14 @@ export class MemStorage implements IStorage {
   async updateUserProfile(id: string, profile: Partial<InsertUserProfile>): Promise<UserProfile | undefined> {
     const existing = this.userProfiles.get(id);
     if (!existing) return undefined;
-    
+
     // Hash password if it's being updated
     const updates: any = { ...profile };
     if (updates.password) {
       updates.passwordHash = await bcrypt.hash(updates.password, 10);
       delete updates.password;
     }
-    
+
     const updated = { ...existing, ...updates };
     this.userProfiles.set(id, updated);
     return updated;
@@ -472,7 +473,7 @@ export class MemStorage implements IStorage {
   async checkIn(userId: string): Promise<Attendance> {
     const today = new Date().toISOString().split('T')[0];
     const existing = await this.getTodayAttendance(userId);
-    
+
     if (existing) {
       throw new Error('Already checked in today');
     }
@@ -506,21 +507,21 @@ export class MemStorage implements IStorage {
   async checkOut(userId: string): Promise<Attendance | undefined> {
     const today = new Date().toISOString().split('T')[0];
     const existing = await this.getTodayAttendance(userId);
-    
+
     if (!existing || existing.checkOut) {
       return undefined;
     }
 
     const now = new Date();
     existing.checkOut = now;
-    
+
     // Calculate duration in hours
     if (existing.checkIn) {
       const durationMs = now.getTime() - new Date(existing.checkIn).getTime();
       const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(2);
       existing.totalDuration = durationHours;
     }
-    
+
     this.attendance.set(existing.id, existing);
     return existing;
   }
@@ -678,6 +679,42 @@ export class MemStorage implements IStorage {
       pendingReimbursements: Array.from(this.reimbursements.values()).filter(r => r.status === 'Pending').length,
       pendingRegularizations: todayAttendance.filter(a => a.regularizationRequested && a.regularizationStatus === null).length,
     };
+  }
+
+  // Role Management Methods
+  async getAllRoles(): Promise<UserRole[]> {
+    return Array.from(this.userRoles.values());
+  }
+
+  async createRole(data: Omit<UserRole, 'id'>): Promise<UserRole> {
+    const id = randomUUID();
+    const role: UserRole = {
+      id,
+      ...data,
+    };
+    this.userRoles.set(id, role);
+    return role;
+  }
+
+  async updateRole(id: string, data: Partial<UserRole>): Promise<UserRole> {
+    const role = this.userRoles.get(id);
+    if (!role) {
+      throw new Error('Role not found');
+    }
+    const updated = { ...role, ...data };
+    this.userRoles.set(id, updated);
+    return updated;
+  }
+
+  async deleteRole(id: string): Promise<void> {
+    if (!this.userRoles.has(id)) {
+      throw new Error('Role not found');
+    }
+    this.userRoles.delete(id);
+  }
+
+  async getAllEmployees(): Promise<UserProfile[]> {
+    return Array.from(this.userProfiles.values());
   }
 }
 
