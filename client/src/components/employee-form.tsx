@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -18,8 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserProfile } from "@shared/schema";
+import { UserProfile, Department, UserRole } from "@shared/schema";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 const employeeFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -41,6 +43,8 @@ const employeeFormSchema = z.object({
   insuranceOpted: z.string().optional(),
   joiningDate: z.string().optional(),
   photo: z.string().optional(),
+  departmentId: z.string().optional(),
+  roleId: z.string().optional(),
 });
 
 type EmployeeFormData = z.infer<typeof employeeFormSchema>;
@@ -53,6 +57,14 @@ interface EmployeeFormProps {
 export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(employee?.photo || null);
+
+  const { data: departments } = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
+  });
+
+  const { data: roles } = useQuery<UserRole[]>({
+    queryKey: ["/api/roles"],
+  });
 
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeFormSchema),
@@ -76,6 +88,8 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
       insuranceOpted: employee?.insuranceOpted ? "yes" : "no",
       joiningDate: employee?.joiningDate || "",
       photo: employee?.photo || "",
+      departmentId: employee?.departmentId || "",
+      roleId: employee?.roleId || "",
     },
   });
 
@@ -412,6 +426,73 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
             )}
           />
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="departmentId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Department</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || undefined}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {departments?.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="roleId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role / Access Level</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || undefined}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {roles?.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{role.roleName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {role.accessType} - {role.accessLevel}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Assign a role to define access permissions
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
 
         <div className="flex justify-end gap-4">
           <Button

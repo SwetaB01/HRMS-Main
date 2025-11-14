@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserProfile } from "@shared/schema";
+import { UserProfile, UserRole } from "@shared/schema";
 import { EmployeeForm } from "@/components/employee-form";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -35,6 +35,16 @@ export default function Employees() {
   const { data: employees, isLoading } = useQuery<UserProfile[]>({
     queryKey: ["/api/employees"],
   });
+
+  const { data: roles } = useQuery<UserRole[]>({
+    queryKey: ["/api/roles"],
+  });
+
+  const getRoleName = (roleId: string | null) => {
+    if (!roleId || !roles) return null;
+    const role = roles.find(r => r.id === roleId);
+    return role ? `${role.roleName} (${role.accessLevel})` : roleId;
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -182,7 +192,13 @@ export default function Employees() {
                   </TableCell>
                   <TableCell>{employee.email}</TableCell>
                   <TableCell>{employee.departmentId || "-"}</TableCell>
-                  <TableCell>{employee.roleId || "-"}</TableCell>
+                  <TableCell>
+                    {employee.roleId ? (
+                      <Badge variant="outline">{getRoleName(employee.roleId)}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">No role assigned</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant={employee.status === "Active" ? "default" : "secondary"}
