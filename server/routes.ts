@@ -122,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       // Assuming a schema validation for req.body would happen here if applicable
-      const role = await storage.updateUserRole(id, req.body); // Assuming storage has a method to update a role
+      const role = await storage.updateRole(id, req.body);
       if (!role) {
         return res.status(404).json({ message: "Role not found" });
       }
@@ -141,10 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const { id } = req.params;
-      const deleted = await storage.deleteUserRole(id); // Assuming storage has a method to delete a role
-      if (!deleted) {
-        return res.status(404).json({ message: "Role not found" });
-      }
+      await storage.deleteRole(id);
       res.status(204).send();
     } catch (error: any) {
       console.error("Failed to delete role:", error);
