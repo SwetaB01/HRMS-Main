@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 const leaveFormSchema = z.object({
   leaveTypeId: z.string().min(1, "Leave type is required"),
@@ -39,6 +40,10 @@ interface LeaveFormProps {
 
 export function LeaveForm({ onSuccess }: LeaveFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+
+  const { data: leaveTypes } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ["/api/leave-types"],
+  });
 
   const form = useForm<LeaveFormData>({
     resolver: zodResolver(leaveFormSchema),
@@ -97,10 +102,17 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="casual">Casual Leave</SelectItem>
-                  <SelectItem value="sick">Sick Leave</SelectItem>
-                  <SelectItem value="earned">Earned Leave</SelectItem>
-                  <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+                  {leaveTypes && leaveTypes.length > 0 ? (
+                    leaveTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      No leave types available
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
