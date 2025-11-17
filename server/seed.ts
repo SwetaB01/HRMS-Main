@@ -41,21 +41,35 @@ export async function seedDatabase() {
     ]);
   }
 
-  // Clear all existing roles
-  console.log('Clearing all existing roles...');
-  await db.delete(userRoles);
+  // Check if roles need to be reset
+  const existingRoles = await db.select().from(userRoles);
+  const desiredRoles = ['Developer', 'Tech Lead', 'HR Executive', 'Project Manager'];
+  const needsReset = existingRoles.length === 0 || 
+                     !desiredRoles.every(role => existingRoles.some(r => r.roleName === role));
 
-  // Seed new roles
-  const rolesData = [
-    { roleName: 'Developer', roleDescription: 'Software developer', accessType: 'Limited Access', accessLevel: 'Employee' },
-    { roleName: 'Tech Lead', roleDescription: 'Technical team leader', accessType: 'Limited Access', accessLevel: 'Manager' },
-    { roleName: 'HR Executive', roleDescription: 'Human resources executive', accessType: 'Limited Access', accessLevel: 'Manager' },
-    { roleName: 'Project Manager', roleDescription: 'Project management lead', accessType: 'Limited Access', accessLevel: 'Manager' },
-  ];
+  if (needsReset) {
+    console.log('Resetting roles...');
+    
+    // First, set all user profiles roleId to null to avoid foreign key constraint
+    await db.update(userProfiles).set({ roleId: null });
+    
+    // Now delete all existing roles
+    await db.delete(userRoles);
 
-  console.log('Adding new roles...');
-  for (const role of rolesData) {
-    await db.insert(userRoles).values(role);
+    // Seed new roles
+    const rolesData = [
+      { roleName: 'Developer', roleDescription: 'Software developer', accessType: 'Limited Access', accessLevel: 'Employee' },
+      { roleName: 'Tech Lead', roleDescription: 'Technical team leader', accessType: 'Limited Access', accessLevel: 'Manager' },
+      { roleName: 'HR Executive', roleDescription: 'Human resources executive', accessType: 'Limited Access', accessLevel: 'Manager' },
+      { roleName: 'Project Manager', roleDescription: 'Project management lead', accessType: 'Limited Access', accessLevel: 'Manager' },
+    ];
+
+    console.log('Adding new roles...');
+    for (const role of rolesData) {
+      await db.insert(userRoles).values(role);
+    }
+    
+    console.log('Roles reset complete. Please reassign roles to users.');
   }
 
   // Only create admin user and default data if it doesn't exist
