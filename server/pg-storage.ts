@@ -122,6 +122,21 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
+  async updateRole(id: string, role: Partial<InsertUserRole>): Promise<UserRole | undefined> {
+    const [updated] = await db.update(userRoles)
+      .set(role)
+      .where(eq(userRoles.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRole(id: string): Promise<boolean> {
+    const result = await db.delete(userRoles)
+      .where(eq(userRoles.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
   async getAllDepartments(): Promise<Department[]> {
     return await db.select().from(departments);
   }

@@ -287,6 +287,19 @@ export class MemStorage implements IStorage {
     return this.userRoles.get(id);
   }
 
+  async updateRole(id: string, role: Partial<InsertUserRole>): Promise<UserRole | undefined> {
+    const existing = this.userRoles.get(id);
+    if (!existing) return undefined;
+    
+    const updated = { ...existing, ...role };
+    this.userRoles.set(id, updated);
+    return updated;
+  }
+
+  async deleteRole(id: string): Promise<boolean> {
+    return this.userRoles.delete(id);
+  }
+
   // Department Operations
   async getAllDepartments(): Promise<Department[]> {
     return Array.from(this.departments.values());

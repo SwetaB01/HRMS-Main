@@ -141,6 +141,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const { id } = req.params;
+      
+      // Check if role exists
+      const role = await storage.getUserRole(id);
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      // Check if any employees are assigned to this role
+      const employees = await storage.getAllUserProfiles();
+      const hasEmployees = employees.some(emp => emp.roleId === id);
+      
+      if (hasEmployees) {
+        return res.status(400).json({ 
+          message: "Cannot delete role. Employees are assigned to this role." 
+        });
+      }
+
       await storage.deleteRole(id);
       res.status(204).send();
     } catch (error: any) {
