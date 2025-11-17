@@ -10,8 +10,7 @@ import {
   FileText,
   LogOut,
   LayoutDashboard,
-  User,
-  CheckSquare,
+  User
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -138,14 +137,6 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                   <Link to="/roles">
                     <Users className="h-4 w-4" />
                     <span>Roles</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === "/approvals"}>
-                  <Link href="/approvals">
-                    <CheckSquare className="h-4 w-4" />
-                    <span>Approvals</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
