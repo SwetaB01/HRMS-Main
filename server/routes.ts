@@ -388,6 +388,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/attendance/check-in", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
+      const today = new Date().toISOString().split('T')[0];
+
+      // Check if there's an approved leave for today
+      const allLeaves = await storage.getLeavesByUser(userId);
+      const approvedLeave = allLeaves.find(leave => {
+        if (leave.status !== 'Approved') return false;
+        const fromDate = new Date(leave.fromDate);
+        const toDate = new Date(leave.toDate);
+        const todayDate = new Date(today);
+        return todayDate >= fromDate && todayDate <= toDate;
+      });
+
+      if (approvedLeave) {
+        return res.status(400).json({ 
+          message: "Cannot check-in. You have an approved leave for today." 
+        });
+      }
+
       const attendance = await storage.checkIn(userId);
       res.status(201).json(attendance);
     } catch (error: any) {
@@ -412,6 +430,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.userId!;
       const { attendanceDate, status, checkIn, checkOut } = req.body;
+
+      // Check if there's an approved leave for this date
+      const allLeaves = await storage.getLeavesByUser(userId);
+      const approvedLeave = allLeaves.find(leave => {
+        if (leave.status !== 'Approved') return false;
+        const fromDate = new Date(leave.fromDate);
+        const toDate = new Date(leave.toDate);
+        const attendDate = new Date(attendanceDate);
+        return attendDate >= fromDate && attendDate <= toDate;
+      });
+
+      if (approvedLeave && status !== 'On Leave') {
+        return res.status(400).json({ 
+          message: "Cannot mark attendance as Present. You have an approved leave for this date." 
+        });
+      }
+
+      // Check if attendance already exists for this date
+      const existingAttendance = await storage.getAttendanceByDate(userId, attendanceDate);
+      if (existingAttendance) {
+        return res.status(400).json({ 
+          message: "Attendance record already exists for this date. Please edit the existing record instead." 
+        });
+      }
 
       // Convert time strings to proper Date objects or null
       let checkInDate = null;
@@ -458,6 +500,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId!;
       const { id } = req.params;
       const { attendanceDate, status, checkIn, checkOut } = req.body;
+
+      // Get the existing attendance record
+      const existingAttendance = await storage.getAttendance(id);
+      if (!existingAttendance) {
+        return res.status(404).json({ message: "Attendance record not found" });
+      }
+
+      // Check the date being updated (use new date if provided, otherwise use existing)
+      const dateToCheck = attendanceDate || existingAttendance.attendanceDate;
+
+      // Check if there's an approved leave for this date
+      const allLeaves = await storage.getLeavesByUser(userId);
+      const approvedLeave = allLeaves.find(leave => {
+        if (leave.status !== 'Approved') return false;
+        const fromDate = new Date(leave.fromDate);
+        const toDate = new Date(leave.toDate);
+        const attendDate = new Date(dateToCheck);
+        return attendDate >= fromDate && attendDate <= toDate;
+      });
+
+      // If there's an approved leave and user is trying to change status to something other than "On Leave"
+      if (approvedLeave && status && status !== 'On Leave') {
+        return res.status(400).json({ 
+          message: "Cannot mark attendance as Present. You have an approved leave for this date." 
+        });
+      }
 
       // Convert time strings to proper Date objects or null
       let checkInDate = undefined;
