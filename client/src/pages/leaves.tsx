@@ -42,11 +42,22 @@ export default function Leaves() {
     queryKey: ["/api/leave-balance"],
   });
 
+  const { data: currentUser } = useQuery<any>({
+    queryKey: ["/api/auth/me"],
+  });
+
   const pendingLeaves = useMemo(() => {
-    // Assuming 'user' object with 'role' is available in context or props
-    // For now, let's assume managers can see all pending leaves
-    return leaves ? leaves.filter((leave) => leave.status === "Open") : [];
-  }, [leaves]);
+    if (!leaves || !currentUser) return [];
+    
+    // Only show pending approvals to managers, HR, and admins
+    const allowedRoles = ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'];
+    if (!allowedRoles.includes(currentUser.roleName)) {
+      return [];
+    }
+    
+    // Show leaves where current user is the manager
+    return leaves.filter((leave) => leave.status === "Open" && leave.managerId === currentUser.id);
+  }, [leaves, currentUser]);
 
   const handleApprove = async () => {
     if (!selectedLeave) return;
@@ -184,8 +195,8 @@ export default function Leaves() {
         )}
       </div>
 
-      {/* Pending Approvals Section for Managers */}
-      {pendingLeaves.length > 0 && (
+      {/* Pending Approvals Section for Managers/HR only */}
+      {currentUser && ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'].includes(currentUser.roleName) && pendingLeaves.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Pending Leave Approvals</CardTitle>

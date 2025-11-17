@@ -32,13 +32,32 @@ export default function Approvals() {
   const [comments, setComments] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { data: currentUser } = useQuery<any>({
+    queryKey: ["/api/auth/me"],
+  });
+
   const { data: pendingLeaves, isLoading } = useQuery<Leave[]>({
     queryKey: ["/api/approvals/leaves"],
+    enabled: !!currentUser && ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'].includes(currentUser?.roleName),
   });
 
   const { data: employees } = useQuery<any[]>({
     queryKey: ["/api/employees"],
   });
+
+  // Check if user has permission to view approvals
+  const hasApprovalAccess = currentUser && ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'].includes(currentUser.roleName);
+
+  if (!hasApprovalAccess) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold mb-2">Access Denied</h2>
+          <p className="text-muted-foreground">You do not have permission to view this page.</p>
+        </div>
+      </div>
+    );
+  }
 
   const getEmployeeName = (userId: string) => {
     const employee = employees?.find(emp => emp.id === userId);
