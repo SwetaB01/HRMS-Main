@@ -51,11 +51,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied. Invalid role." });
       }
 
-      // Check if role is HR Executive or Manager (or Tech Lead/Project Manager which are manager-level)
-      const allowedRoles = ['HR Executive', 'Manager', 'Tech Lead', 'Project Manager'];
+      // Check if role is HR Executive, Manager, Admin, or manager-level roles
+      const allowedRoles = ['HR Executive', 'Manager', 'Tech Lead', 'Project Manager', 'Admin'];
       if (!allowedRoles.includes(role.roleName)) {
         return res.status(403).json({ 
-          message: "Access denied. Only HR and Manager roles can create employee records." 
+          message: "Access denied. Only HR, Manager, and Admin roles can create employee records." 
         });
       }
 

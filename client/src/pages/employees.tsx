@@ -53,12 +53,13 @@ export default function Employees() {
     queryKey: ["/api/auth/me"],
   });
 
-  // Check if current user can create employees (HR or Manager roles)
+  // Check if current user can create employees (HR, Manager, or Admin roles)
   const canCreateEmployee = currentUser && (
     currentUser.roleName === 'HR Executive' ||
     currentUser.roleName === 'Manager' ||
     currentUser.roleName === 'Tech Lead' ||
-    currentUser.roleName === 'Project Manager'
+    currentUser.roleName === 'Project Manager' ||
+    currentUser.roleName === 'Admin'
   );
 
   const getRoleName = (roleId: string | null) => {
