@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -22,11 +22,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { Leave, LeaveLedger } from "@shared/schema";
 import { LeaveForm } from "@/components/leave-form";
 
 export default function Leaves() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [selectedLeave, setSelectedLeave] = useState<Leave | null>(null);
+  const [comments, setComments] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: leaves, isLoading } = useQuery<Leave[]>({
     queryKey: ["/api/leaves"],
@@ -36,12 +42,78 @@ export default function Leaves() {
     queryKey: ["/api/leave-balance"],
   });
 
+  const pendingLeaves = useMemo(() => {
+    // Assuming 'user' object with 'role' is available in context or props
+    // For now, let's assume managers can see all pending leaves
+    return leaves ? leaves.filter((leave) => leave.status === "Open") : [];
+  }, [leaves]);
+
+  const handleApprove = async () => {
+    if (!selectedLeave) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/leaves/${selectedLeave.id}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ comments }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to approve leave');
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
+      setIsApproveDialogOpen(false);
+      setComments("");
+      setSelectedLeave(null);
+    } catch (error) {
+      console.error('Failed to approve leave:', error);
+      alert('Failed to approve leave. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedLeave || !comments.trim()) {
+      alert('Please provide a reason for rejection');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/leaves/${selectedLeave.id}/reject`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ comments }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject leave');
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
+      setIsRejectDialogOpen(false);
+      setComments("");
+      setSelectedLeave(null);
+    } catch (error) {
+      console.error('Failed to reject leave:', error);
+      alert('Failed to reject leave. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       "Open": "secondary",
       "Approved": "default",
       "Rejected": "destructive",
-      "Cancelled": "secondary",
     };
     return <Badge variant={variants[status] || "secondary"}>{status}</Badge>;
   };
@@ -112,6 +184,66 @@ export default function Leaves() {
         )}
       </div>
 
+      {/* Pending Approvals Section for Managers */}
+      {pendingLeaves.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending Leave Approvals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Leave Type</TableHead>
+                    <TableHead>From Date</TableHead>
+                    <TableHead>To Date</TableHead>
+                    <TableHead>Days</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingLeaves.map((leave) => (
+                    <TableRow key={leave.id}>
+                      <TableCell>{leave.employeeName}</TableCell>
+                      <TableCell>{leave.leaveTypeId}</TableCell>
+                      <TableCell>{leave.fromDate}</TableCell>
+                      <TableCell>{leave.toDate}</TableCell>
+                      <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
+                      <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
+                      <TableCell className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedLeave(leave);
+                            setIsApproveDialogOpen(true);
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            setSelectedLeave(leave);
+                            setIsRejectDialogOpen(true);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" /> Reject
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Leave History</CardTitle>
@@ -169,6 +301,81 @@ export default function Leaves() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Approve Dialog */}
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Leave Application</DialogTitle>
+            <DialogDescription>
+              Add optional comments for the employee
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Comments (optional)"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+            />
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsApproveDialogOpen(false);
+                  setComments("");
+                  setSelectedLeave(null);
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleApprove} disabled={isSubmitting}>
+                {isSubmitting ? "Approving..." : "Approve"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Leave Application</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejection
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Reason for rejection *"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              required
+            />
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsRejectDialogOpen(false);
+                  setComments("");
+                  setSelectedLeave(null);
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleReject}
+                disabled={isSubmitting || !comments.trim()}
+              >
+                {isSubmitting ? "Rejecting..." : "Reject"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

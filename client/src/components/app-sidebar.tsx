@@ -11,7 +11,6 @@ import {
   LogOut,
   LayoutDashboard,
   User,
-  CheckSquare // Added CheckSquare icon
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -50,12 +49,6 @@ const menuItems = [
     title: "Leave Management",
     url: "/leaves",
     icon: CalendarDays,
-  },
-  // Added Approvals menu item
-  {
-    title: "Approvals",
-    url: "/approvals",
-    icon: CheckSquare, // Using CheckSquare icon
   },
   {
     title: "Holidays",
