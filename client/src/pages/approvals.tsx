@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -45,6 +44,10 @@ export default function Approvals() {
     queryKey: ["/api/employees"],
   });
 
+  const { data: leaveTypes } = useQuery<any[]>({
+    queryKey: ["/api/leave-types"],
+  });
+
   // Check if user has permission to view approvals
   const hasApprovalAccess = currentUser && ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'].includes(currentUser.roleName);
 
@@ -61,12 +64,17 @@ export default function Approvals() {
 
   const getEmployeeName = (userId: string) => {
     const employee = employees?.find(emp => emp.id === userId);
-    return employee ? `${employee.firstName} ${employee.lastName}` : userId;
+    return employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+  };
+
+  const getLeaveTypeName = (leaveTypeId: string) => {
+    const leaveType = leaveTypes?.find(type => type.id === leaveTypeId);
+    return leaveType?.name || leaveTypeId;
   };
 
   const handleApprove = async () => {
     if (!selectedLeave) return;
-    
+
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/leaves/${selectedLeave.id}/approve`, {
@@ -182,7 +190,7 @@ export default function Approvals() {
                   pendingLeaves.map((leave) => (
                     <TableRow key={leave.id}>
                       <TableCell>{getEmployeeName(leave.userId)}</TableCell>
-                      <TableCell>{leave.leaveTypeId}</TableCell>
+                      <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
                       <TableCell>{leave.fromDate}</TableCell>
                       <TableCell>{leave.toDate}</TableCell>
                       <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
