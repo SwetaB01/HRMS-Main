@@ -107,47 +107,49 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
   };
 
   const handleSubmit = async (data: EmployeeFormData) => {
-    setIsLoading(true);
     try {
-      // Prepare payload with proper field transformations
-      const payload: any = {
-        ...data,
-        insuranceOpted: data.insuranceOpted === 'yes',
-        // Convert empty date strings to null
-        birthdate: data.birthdate?.trim() || null,
-        joiningDate: data.joiningDate?.trim() || null,
-      };
+      setIsLoading(true);
 
-      // Only include password if it's a new employee or if it's being changed
-      if (!employee) {
-        // For new employees, password is required
-        if (!data.password || data.password.trim() === '') {
-          throw new Error('Password is required for new employees');
-        }
-        payload.password = data.password;
-      } else if (data.password && data.password.trim() !== '') {
-        // For existing employees, only include password if it's being updated
-        payload.password = data.password;
-      } else {
-        // Don't send password field if not updating it
-        delete payload.password;
+      // Prepare data for submission
+      const submitData: any = { ...data };
+
+      // Remove password field if it's empty during edit
+      if (employee && !data.password) {
+        delete submitData.password;
       }
 
-      const url = employee ? `/api/employees/${employee.id}` : '/api/employees';
+      // Convert insuranceOpted to boolean
+      submitData.insuranceOpted = data.insuranceOpted === "yes";
+
+      const endpoint = employee
+        ? `/api/employees/${employee.id}`
+        : '/api/employees';
+
       const method = employee ? 'PATCH' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await fetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(submitData),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save employee');
+        const error = await response.json();
+
+        // Check for access denied errors
+        if (response.status === 403 || response.status === 401) {
+          alert('Access Denied: ' + (error.message || 'You do not have permission to perform this action.'));
+          throw new Error(error.message || 'Access denied');
+        }
+
+        throw new Error(error.message || 'Failed to save employee');
       }
 
       onSuccess();
+    } catch (error: any) {
+      console.error('Failed to save employee:', error);
+      // You might want to show an error toast here
+      throw error;
     } finally {
       setIsLoading(false);
     }

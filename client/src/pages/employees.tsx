@@ -115,7 +115,7 @@ export default function Employees() {
             Manage employee profiles and access
           </p>
         </div>
-        {canCreateEmployee && (
+        {canCreateEmployee ? (
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-employee">
@@ -142,6 +142,15 @@ export default function Employees() {
             />
           </DialogContent>
         </Dialog>
+        ) : (
+          <Button 
+            disabled 
+            data-testid="button-add-employee-disabled"
+            title="Access Denied: Only HR, Manager, and Admin roles can create employee records"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Employee
+          </Button>
         )}
       </div>
 
