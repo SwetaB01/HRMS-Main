@@ -1,5 +1,5 @@
 import { db } from './db';
-import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes } from '@shared/schema';
+import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, departments } from '@shared/schema';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 
@@ -8,18 +8,21 @@ export async function seedDatabase() {
 
   // Check if admin user already exists
   const existingUsers = await db.select().from(userProfiles);
-  if (existingUsers.length > 0) {
-    console.log('Database already seeded, skipping...');
-    return;
-  }
+  const userAlreadyExists = existingUsers.length > 0;
 
-  // Create default admin role
-  const [adminRole] = await db.insert(userRoles).values({
-    roleName: 'Administrator',
-    roleDescription: 'Full system access',
-    accessType: 'Admin',
-    accessLevel: 'Full',
-  }).returning();
+  // Create default admin role only if user doesn't exist
+  let adminRole;
+  if (!userAlreadyExists) {
+    [adminRole] = await db.insert(userRoles).values({
+      roleName: 'Administrator',
+      roleDescription: 'Full system access',
+      accessType: 'Admin',
+      accessLevel: 'Full',
+    }).returning();
+  } else {
+    const existingAdminRole = await db.select().from(userRoles).limit(1);
+    adminRole = existingAdminRole[0];
+  }
 
   // Seed user types
   const userTypesData = [
@@ -37,50 +40,80 @@ export async function seedDatabase() {
     }
   }
 
-  // Create default admin user
-  const hashedPassword = await bcrypt.hash('admin', 10);
-  await db.insert(userProfiles).values({
-    roleId: adminRole.id,
-    firstName: 'Admin',
-    lastName: 'User',
-    email: 'admin@midcai.com',
-    username: 'admin',
-    passwordHash: hashedPassword,
-    status: 'Active',
-    userType: 'Admin',
-    language: 'English',
-    timezone: 'Asia/Kolkata',
-    insuranceOpted: false,
-  });
+  // Seed departments
+  const departmentsData = [
+    { name: 'Project Management', description: 'Project planning and execution' },
+    { name: 'Marketing', description: 'Marketing and brand management' },
+    { name: 'Sales', description: 'Sales and customer relations' },
+    { name: 'Human Resources', description: 'HR and employee management' },
+    { name: 'Accounts', description: 'Finance and accounting' },
+    { name: 'Inventory', description: 'Inventory and supply chain management' },
+    { name: 'IT', description: 'Information technology and systems' },
+  ];
 
-  // Create default leave types
-  await db.insert(leaveTypes).values([
-    {
-      name: 'Casual Leave',
-      maxConsecutiveDays: 5,
-      isCarryForward: false,
-    },
-    {
-      name: 'Sick Leave',
-      maxConsecutiveDays: 10,
-      isCarryForward: false,
-    },
-    {
-      name: 'Earned Leave',
-      maxConsecutiveDays: 15,
-      isCarryForward: true,
-    },
-  ]);
+  for (const dept of departmentsData) {
+    await db.insert(departments).values(dept);
+  }
 
-  // Create default reimbursement types
-  await db.insert(reimbursementTypes).values([
-    { name: 'Travel' },
-    { name: 'Meals & Entertainment' },
-    { name: 'Office Supplies' },
-    { name: 'Accommodation' },
-    { name: 'Phone & Internet' },
-    { name: 'Others' },
-  ]);
+  // Seed additional roles
+  const rolesData = [
+    { roleName: 'Individual', roleDescription: 'Individual contributor', accessType: 'Limited Access', accessLevel: 'Employee' },
+    { roleName: 'Manager', roleDescription: 'Team manager', accessType: 'Limited Access', accessLevel: 'Manager' },
+    { roleName: 'Admin', roleDescription: 'System administrator', accessType: 'Full Access', accessLevel: 'Admin' },
+    { roleName: 'Vendor', roleDescription: 'External vendor', accessType: 'Read Only', accessLevel: 'Custom' },
+    { roleName: 'Contractor', roleDescription: 'Contract worker', accessType: 'Limited Access', accessLevel: 'Custom' },
+  ];
+
+  for (const role of rolesData) {
+    await db.insert(userRoles).values(role);
+  }
+
+  // Create default admin user only if doesn't exist
+  if (!userAlreadyExists) {
+    const hashedPassword = await bcrypt.hash('admin', 10);
+    await db.insert(userProfiles).values({
+      roleId: adminRole.id,
+      firstName: 'Admin',
+      lastName: 'User',
+      email: 'admin@midcai.com',
+      username: 'admin',
+      passwordHash: hashedPassword,
+      status: 'Active',
+      userType: 'Admin',
+      language: 'English',
+      timezone: 'Asia/Kolkata',
+      insuranceOpted: false,
+    });
+
+    // Create default leave types
+    await db.insert(leaveTypes).values([
+      {
+        name: 'Casual Leave',
+        maxConsecutiveDays: 5,
+        isCarryForward: false,
+      },
+      {
+        name: 'Sick Leave',
+        maxConsecutiveDays: 10,
+        isCarryForward: false,
+      },
+      {
+        name: 'Earned Leave',
+        maxConsecutiveDays: 15,
+        isCarryForward: true,
+      },
+    ]);
+
+    // Create default reimbursement types
+    await db.insert(reimbursementTypes).values([
+      { name: 'Travel' },
+      { name: 'Meals & Entertainment' },
+      { name: 'Office Supplies' },
+      { name: 'Accommodation' },
+      { name: 'Phone & Internet' },
+      { name: 'Others' },
+    ]);
+  }
 
   console.log('Database seeding completed!');
 }
