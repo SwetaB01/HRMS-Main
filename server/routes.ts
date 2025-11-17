@@ -551,6 +551,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/approvals/leaves", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      
+      // Get all leaves where the current user is the manager
+      const allLeaves = await storage.getAllLeaves();
+      const pendingLeaves = allLeaves.filter(leave => 
+        leave.managerId === userId && leave.status === 'Open'
+      );
+      
+      res.json(pendingLeaves);
+    } catch (error) {
+      console.error('Failed to fetch pending leaves:', error);
+      res.status(500).json({ message: "Failed to fetch pending leaves" });
+    }
+  });
+
   app.get("/api/leave-balance", async (req, res) => {
     try {
       const userId = req.session.userId;
@@ -569,15 +586,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.userId!;
       const { userId: _, ...leaveData } = req.body; // Remove userId from body
+      
+      // Get employee's manager from their profile
+      const employee = await storage.getUserProfile(userId);
+      const managerId = employee?.managerId || null;
+      
       const validated = insertLeaveSchema.parse({
         ...leaveData,
         userId, // Use authenticated user's ID
+        managerId, // Set manager from employee's profile
       });
       const leave = await storage.createLeave(validated);
 
       // Send email notification to manager
       try {
-        const employee = await storage.getUserProfile(leave.userId);
         const manager = leave.managerId ? await storage.getUserProfile(leave.managerId) : null;
         const leaveType = await storage.getAllLeaveTypes();
         const leaveTypeName = leaveType.find(lt => lt.id === leave.leaveTypeId)?.name || 'Leave';
@@ -599,15 +621,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(leave);
     } catch (error) {
+      console.error('Leave creation error:', error);
       res.status(400).json({ message: "Failed to apply for leave" });
     }
   });
 
-  app.patch("/api/leaves/:id/approve", async (req, res) => {
+  app.patch("/api/leaves/:id/approve", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;
-      const managerId = 'admin-user'; // In production, get from session
+      const managerId = req.session.userId!;
 
       const leave = await storage.approveLeave(id, managerId, comments);
       if (!leave) {
@@ -642,11 +665,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/leaves/:id/reject", async (req, res) => {
+  app.patch("/api/leaves/:id/reject", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;
-      const managerId = 'admin-user'; // In production, get from session
+      const managerId = req.session.userId!;
 
       if (!comments) {
         return res.status(400).json({ message: "Comments are required for rejection" });
