@@ -41,30 +41,21 @@ export async function seedDatabase() {
     ]);
   }
 
-  // Remove any incorrectly named roles (like employee names)
-  const invalidRoleNames = ['Sweta Bhatnagar', 'sweta bhatnagar'];
-  for (const invalidName of invalidRoleNames) {
-    const invalidRoles = await db.select().from(userRoles).where(eq(userRoles.roleName, invalidName));
-    for (const role of invalidRoles) {
-      console.log(`Removing invalid role: ${role.roleName}`);
-      await db.delete(userRoles).where(eq(userRoles.id, role.id));
-    }
-  }
+  // Clear all existing roles
+  console.log('Clearing all existing roles...');
+  await db.delete(userRoles);
 
-  // Seed roles
+  // Seed new roles
   const rolesData = [
-    { roleName: 'Individual', roleDescription: 'Individual contributor', accessType: 'Limited Access', accessLevel: 'Employee' },
-    { roleName: 'Manager', roleDescription: 'Team manager', accessType: 'Limited Access', accessLevel: 'Manager' },
-    { roleName: 'Admin', roleDescription: 'System administrator', accessType: 'Full Access', accessLevel: 'Admin' },
-    { roleName: 'Vendor', roleDescription: 'External vendor', accessType: 'Read Only', accessLevel: 'Custom' },
-    { roleName: 'Contractor', roleDescription: 'Contract worker', accessType: 'Limited Access', accessLevel: 'Custom' },
+    { roleName: 'Developer', roleDescription: 'Software developer', accessType: 'Limited Access', accessLevel: 'Employee' },
+    { roleName: 'Tech Lead', roleDescription: 'Technical team leader', accessType: 'Limited Access', accessLevel: 'Manager' },
+    { roleName: 'HR Executive', roleDescription: 'Human resources executive', accessType: 'Limited Access', accessLevel: 'Manager' },
+    { roleName: 'Project Manager', roleDescription: 'Project management lead', accessType: 'Limited Access', accessLevel: 'Manager' },
   ];
 
+  console.log('Adding new roles...');
   for (const role of rolesData) {
-    const exists = await db.select().from(userRoles).where(eq(userRoles.roleName, role.roleName)).limit(1);
-    if (exists.length === 0) {
-      await db.insert(userRoles).values(role);
-    }
+    await db.insert(userRoles).values(role);
   }
 
   // Only create admin user and default data if it doesn't exist
