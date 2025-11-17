@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +35,15 @@ export default function Approvals() {
   const { data: pendingLeaves, isLoading } = useQuery<Leave[]>({
     queryKey: ["/api/approvals/leaves"],
   });
+
+  const { data: employees } = useQuery<any[]>({
+    queryKey: ["/api/employees"],
+  });
+
+  const getEmployeeName = (userId: string) => {
+    const employee = employees?.find(emp => emp.id === userId);
+    return employee ? `${employee.firstName} ${employee.lastName}` : userId;
+  };
 
   const handleApprove = async () => {
     if (!selectedLeave) return;
@@ -153,7 +162,7 @@ export default function Approvals() {
                 ) : pendingLeaves && pendingLeaves.length > 0 ? (
                   pendingLeaves.map((leave) => (
                     <TableRow key={leave.id}>
-                      <TableCell>{leave.userId}</TableCell>
+                      <TableCell>{getEmployeeName(leave.userId)}</TableCell>
                       <TableCell>{leave.leaveTypeId}</TableCell>
                       <TableCell>{leave.fromDate}</TableCell>
                       <TableCell>{leave.toDate}</TableCell>

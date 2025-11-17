@@ -67,12 +67,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Get current user profile
-  app.get("/api/auth/me", requireAuth, async (req, res) => {
+  app.get("/api/auth/me", async (req, res) => {
     try {
-      const userId = req.session.userId!;
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const userId = req.session.userId;
       const user = await storage.getUserProfile(userId);
       
       if (!user) {
+        // Clear invalid session
+        req.session.destroy(() => {});
         return res.status(404).json({ message: "User not found" });
       }
 
