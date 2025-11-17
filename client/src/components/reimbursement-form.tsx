@@ -87,7 +87,7 @@ export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
           name="reimbursementTypeId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Expense Category</FormLabel>
+              <FormLabel>Expense Category *</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger data-testid="select-reimbursement-type">
@@ -114,7 +114,7 @@ export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
             name="date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Expense Date</FormLabel>
+                <FormLabel>Expense Date *</FormLabel>
                 <FormControl>
                   <Input type="date" data-testid="input-expense-date" {...field} />
                 </FormControl>
@@ -128,7 +128,7 @@ export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
             name="amount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Amount (₹)</FormLabel>
+                <FormLabel>Amount (₹) *</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -150,7 +150,7 @@ export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
           name="category"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>Description *</FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="Provide details about the expense..."

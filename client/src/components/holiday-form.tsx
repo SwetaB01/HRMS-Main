@@ -74,7 +74,7 @@ export function HolidayForm({ onSuccess }: HolidayFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Holiday Name</FormLabel>
+              <FormLabel>Holiday Name *</FormLabel>
               <FormControl>
                 <Input
                   placeholder="e.g., Diwali, Republic Day"
@@ -93,7 +93,7 @@ export function HolidayForm({ onSuccess }: HolidayFormProps) {
             name="fromDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>From Date</FormLabel>
+                <FormLabel>From Date *</FormLabel>
                 <FormControl>
                   <Input type="date" data-testid="input-from-date-holiday" {...field} />
                 </FormControl>
@@ -107,7 +107,7 @@ export function HolidayForm({ onSuccess }: HolidayFormProps) {
             name="toDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>To Date</FormLabel>
+                <FormLabel>To Date *</FormLabel>
                 <FormControl>
                   <Input type="date" data-testid="input-to-date-holiday" {...field} />
                 </FormControl>
@@ -122,7 +122,7 @@ export function HolidayForm({ onSuccess }: HolidayFormProps) {
           name="totalHolidays"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Total Days</FormLabel>
+              <FormLabel>Total Days *</FormLabel>
               <FormControl>
                 <Input
                   type="number"

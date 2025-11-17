@@ -89,7 +89,7 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
           name="leaveTypeId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Leave Type</FormLabel>
+              <FormLabel>Leave Type *</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger data-testid="select-leave-type">
@@ -114,7 +114,7 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
             name="fromDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>From Date</FormLabel>
+                <FormLabel>From Date *</FormLabel>
                 <FormControl>
                   <Input type="date" data-testid="input-from-date" {...field} />
                 </FormControl>
@@ -128,7 +128,7 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
             name="toDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>To Date</FormLabel>
+                <FormLabel>To Date *</FormLabel>
                 <FormControl>
                   <Input type="date" data-testid="input-to-date" {...field} />
                 </FormControl>
@@ -162,7 +162,7 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
           name="reason"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Reason</FormLabel>
+              <FormLabel>Reason *</FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="Explain the reason for leave..."
