@@ -526,6 +526,10 @@ export class MemStorage implements IStorage {
     return existing;
   }
 
+  async getAllAttendance(): Promise<Attendance[]> {
+    return Array.from(this.attendance.values());
+  }
+
   // Reimbursement Type Operations
   async getAllReimbursementTypes(): Promise<ReimbursementType[]> {
     return Array.from(this.reimbursementTypes.values());

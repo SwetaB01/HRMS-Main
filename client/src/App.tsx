@@ -12,6 +12,7 @@ import Dashboard from "@/pages/dashboard";
 import ProfilePage from "@/pages/profile";
 import Employees from "@/pages/employees";
 import Roles from "@/pages/roles";
+import Approvals from "@/pages/approvals";
 import Attendance from "@/pages/attendance";
 import Leaves from "@/pages/leaves";
 import Holidays from "@/pages/holidays";
@@ -28,6 +29,7 @@ function Router({ currentUser, onLogout }: { currentUser: any; onLogout: () => v
       <Route path="/employees" component={Employees} />
       <Route path="/roles" component={Roles} />
       <Route path="/attendance" component={Attendance} />
+      <Route path="/approvals" component={Approvals} />
       <Route path="/leaves" component={Leaves} />
       <Route path="/holidays" component={Holidays} />
       <Route path="/reimbursements" component={Reimbursements} />

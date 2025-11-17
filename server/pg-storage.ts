@@ -350,6 +350,10 @@ export class PostgresStorage implements IStorage {
     return updated;
   }
 
+  async getAllAttendance(): Promise<Attendance[]> {
+    return await db.select().from(attendance).orderBy(desc(attendance.attendanceDate));
+  }
+
   async getAllReimbursementTypes(): Promise<ReimbursementType[]> {
     return await db.select().from(reimbursementTypes);
   }
