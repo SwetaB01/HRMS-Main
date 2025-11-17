@@ -109,9 +109,9 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <div className="px-2 py-6 text-center text-sm text-muted-foreground">
                       No leave types available
-                    </SelectItem>
+                    </div>
                   )}
                 </SelectContent>
               </Select>
