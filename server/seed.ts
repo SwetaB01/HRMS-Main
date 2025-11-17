@@ -1,3 +1,4 @@
+
 import { db } from './db';
 import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, departments } from '@shared/schema';
 import bcrypt from 'bcryptjs';
@@ -9,20 +10,6 @@ export async function seedDatabase() {
   // Check if admin user already exists
   const existingUsers = await db.select().from(userProfiles);
   const userAlreadyExists = existingUsers.length > 0;
-
-  // Create default admin role only if user doesn't exist
-  let adminRole;
-  if (!userAlreadyExists) {
-    [adminRole] = await db.insert(userRoles).values({
-      roleName: 'Administrator',
-      roleDescription: 'Full system access',
-      accessType: 'Admin',
-      accessLevel: 'Full',
-    }).returning();
-  } else {
-    const existingAdminRole = await db.select().from(userRoles).limit(1);
-    adminRole = existingAdminRole[0];
-  }
 
   // Seed user types
   const userTypesData = [
@@ -52,10 +39,13 @@ export async function seedDatabase() {
   ];
 
   for (const dept of departmentsData) {
-    await db.insert(departments).values(dept);
+    const exists = await db.select().from(departments).where(eq(departments.name, dept.name)).limit(1);
+    if (exists.length === 0) {
+      await db.insert(departments).values(dept);
+    }
   }
 
-  // Seed additional roles
+  // Seed roles
   const rolesData = [
     { roleName: 'Individual', roleDescription: 'Individual contributor', accessType: 'Limited Access', accessLevel: 'Employee' },
     { roleName: 'Manager', roleDescription: 'Team manager', accessType: 'Limited Access', accessLevel: 'Manager' },
@@ -65,11 +55,23 @@ export async function seedDatabase() {
   ];
 
   for (const role of rolesData) {
-    await db.insert(userRoles).values(role);
+    const exists = await db.select().from(userRoles).where(eq(userRoles.roleName, role.roleName)).limit(1);
+    if (exists.length === 0) {
+      await db.insert(userRoles).values(role);
+    }
   }
 
-  // Create default admin user only if doesn't exist
+  // Only create admin user and default data if it doesn't exist
   if (!userAlreadyExists) {
+    // Create default admin role
+    const [adminRole] = await db.insert(userRoles).values({
+      roleName: 'Administrator',
+      roleDescription: 'Full system access',
+      accessType: 'Admin',
+      accessLevel: 'Full',
+    }).returning();
+
+    // Create default admin user
     const hashedPassword = await bcrypt.hash('admin', 10);
     await db.insert(userProfiles).values({
       roleId: adminRole.id,
