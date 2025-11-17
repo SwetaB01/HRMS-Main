@@ -468,6 +468,12 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getAttendanceByDate(userId: string, date: string): Promise<Attendance | undefined> {
+    return Array.from(this.attendance.values()).find(
+      a => a.userId === userId && a.attendanceDate === date
+    );
+  }
+
   async createAttendance(attendance: InsertAttendance): Promise<Attendance> {
     const id = `attendance-${Date.now()}`;
     const newAttendance: Attendance = { ...attendance, id };

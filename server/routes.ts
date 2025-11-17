@@ -643,6 +643,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Leave not found" });
       }
 
+      // Create attendance records for the leave period
+      try {
+        const fromDate = new Date(leave.fromDate);
+        const toDate = new Date(leave.toDate);
+        
+        // Loop through each day in the leave period
+        for (let date = new Date(fromDate); date <= toDate; date.setDate(date.getDate() + 1)) {
+          const attendanceDate = date.toISOString().split('T')[0];
+          
+          // Check if attendance record already exists for this date
+          const existingAttendance = await storage.getAttendanceByDate(leave.userId, attendanceDate);
+          
+          if (!existingAttendance) {
+            // Create attendance record with "On Leave" status
+            await storage.createAttendance({
+              userId: leave.userId,
+              attendanceDate,
+              status: 'On Leave',
+              leaveTypeId: leave.leaveTypeId,
+              checkIn: null,
+              checkOut: null,
+              totalDuration: leave.halfDay ? '4' : '8',
+              earlySignIn: false,
+              earlySignOut: false,
+              lateSignIn: false,
+              lateSignOut: false,
+              regularizationRequested: false,
+            });
+          } else if (existingAttendance.status !== 'On Leave') {
+            // Update existing attendance to "On Leave" if it's not already
+            await storage.updateAttendance(existingAttendance.id, {
+              status: 'On Leave',
+              leaveTypeId: leave.leaveTypeId,
+              totalDuration: leave.halfDay ? '4' : '8',
+            });
+          }
+        }
+      } catch (attendanceError) {
+        console.error('Failed to create attendance records for leave:', attendanceError);
+        // Continue even if attendance creation fails
+      }
+
       // Send email notification to employee
       try {
         const employee = await storage.getUserProfile(leave.userId);
