@@ -41,6 +41,16 @@ export async function seedDatabase() {
     ]);
   }
 
+  // Remove any incorrectly named roles (like employee names)
+  const invalidRoleNames = ['Sweta Bhatnagar', 'sweta bhatnagar'];
+  for (const invalidName of invalidRoleNames) {
+    const invalidRoles = await db.select().from(userRoles).where(eq(userRoles.roleName, invalidName));
+    for (const role of invalidRoles) {
+      console.log(`Removing invalid role: ${role.roleName}`);
+      await db.delete(userRoles).where(eq(userRoles.id, role.id));
+    }
+  }
+
   // Seed roles
   const rolesData = [
     { roleName: 'Individual', roleDescription: 'Individual contributor', accessType: 'Limited Access', accessLevel: 'Employee' },
