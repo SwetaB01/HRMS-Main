@@ -276,6 +276,17 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
+  async getAttendanceByDate(userId: string, date: string): Promise<Attendance | undefined> {
+    const result = await db.select()
+      .from(attendance)
+      .where(and(
+        eq(attendance.userId, userId),
+        eq(attendance.attendanceDate, date)
+      ))
+      .limit(1);
+    return result[0];
+  }
+
   async getAttendanceByUser(userId: string, fromDate?: string, toDate?: string): Promise<Attendance[]> {
     let query = db
       .select()

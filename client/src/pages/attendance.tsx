@@ -77,6 +77,16 @@ export default function Attendance() {
     queryKey: ["/api/attendance/today-status"],
   });
 
+  const { data: leaveTypes } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ["/api/leave-types"],
+  });
+
+  const getLeaveTypeName = (leaveTypeId: string | null) => {
+    if (!leaveTypeId) return '';
+    const leaveType = leaveTypes?.find(type => type.id === leaveTypeId);
+    return leaveType?.name || '';
+  };
+
   const form = useForm<AttendanceFormValues>({
     resolver: zodResolver(attendanceFormSchema),
     defaultValues: {
@@ -529,7 +539,16 @@ export default function Attendance() {
                   attendanceRecords.map((record) => (
                     <TableRow key={record.id}>
                       <TableCell>{record.attendanceDate}</TableCell>
-                      <TableCell>{getStatusBadge(record.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {getStatusBadge(record.status)}
+                          {record.status === 'On Leave' && record.leaveTypeId && (
+                            <span className="text-xs text-muted-foreground">
+                              {getLeaveTypeName(record.leaveTypeId)}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         {record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '-'}
                       </TableCell>

@@ -75,6 +75,7 @@ export interface IStorage {
   // Attendance Operations
   getAttendance(id: string): Promise<Attendance | undefined>;
   getAttendanceByUser(userId: string, fromDate?: string, toDate?: string): Promise<Attendance[]>;
+  getAttendanceByDate(userId: string, date: string): Promise<Attendance | undefined>;
   getTodayAttendance(userId: string): Promise<Attendance | undefined>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   updateAttendance(id: string, attendance: Partial<InsertAttendance>): Promise<Attendance | undefined>;
@@ -459,6 +460,12 @@ export class MemStorage implements IStorage {
 
   async getAttendanceByUser(userId: string, fromDate?: string, toDate?: string): Promise<Attendance[]> {
     return Array.from(this.attendance.values()).filter(a => a.userId === userId);
+  }
+
+  async getAttendanceByDate(userId: string, date: string): Promise<Attendance | undefined> {
+    return Array.from(this.attendance.values()).find(
+      a => a.userId === userId && a.attendanceDate === date
+    );
   }
 
   async getTodayAttendance(userId: string): Promise<Attendance | undefined> {

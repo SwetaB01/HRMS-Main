@@ -662,6 +662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               attendanceDate,
               status: 'On Leave',
               leaveTypeId: leave.leaveTypeId,
+              companyId: leave.companyId || null,
               checkIn: null,
               checkOut: null,
               totalDuration: leave.halfDay ? '4' : '8',
@@ -670,6 +671,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lateSignIn: false,
               lateSignOut: false,
               regularizationRequested: false,
+              shiftTiming: null,
+              regularizationReason: null,
+              regularizationStatus: null,
+              regularizationApprovedBy: null,
+              regularizationApprovedAt: null,
             });
           } else if (existingAttendance.status !== 'On Leave') {
             // Update existing attendance to "On Leave" if it's not already
