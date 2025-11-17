@@ -1,4 +1,3 @@
-
 import { db } from './db';
 import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, departments } from '@shared/schema';
 import bcrypt from 'bcryptjs';
@@ -27,22 +26,19 @@ export async function seedDatabase() {
     }
   }
 
-  // Seed departments
-  const departmentsData = [
-    { name: 'Project Management', description: 'Project planning and execution' },
-    { name: 'Marketing', description: 'Marketing and brand management' },
-    { name: 'Sales', description: 'Sales and customer relations' },
-    { name: 'Human Resources', description: 'HR and employee management' },
-    { name: 'Accounts', description: 'Finance and accounting' },
-    { name: 'Inventory', description: 'Inventory and supply chain management' },
-    { name: 'IT', description: 'Information technology and systems' },
-  ];
-
-  for (const dept of departmentsData) {
-    const exists = await db.select().from(departments).where(eq(departments.name, dept.name)).limit(1);
-    if (exists.length === 0) {
-      await db.insert(departments).values(dept);
-    }
+  // Seed departments if not exist
+  const existingDepts = await db.select().from(departments);
+  if (existingDepts.length === 0) {
+    console.log('Seeding departments...');
+    await db.insert(departments).values([
+      { id: 'project-management', name: 'Project Management', parentDeptId: null },
+      { id: 'marketing', name: 'Marketing', parentDeptId: null },
+      { id: 'sales', name: 'Sales', parentDeptId: null },
+      { id: 'hr', name: 'Human Resources', parentDeptId: null },
+      { id: 'accounts', name: 'Accounts', parentDeptId: null },
+      { id: 'inventory', name: 'Inventory', parentDeptId: null },
+      { id: 'it', name: 'IT', parentDeptId: null },
+    ]);
   }
 
   // Seed roles

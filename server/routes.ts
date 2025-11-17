@@ -82,14 +82,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Role routes
   app.get("/api/roles", async (req, res) => {
-    // NOTE: In a real application, you'd want to check if the user is authenticated and authorized to view roles.
-    // For this example, we'll assume access is granted if a session exists.
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
     try {
-      const roles = await storage.getAllUserRoles(); // Assuming storage has a method to get all roles
+      const roles = await storage.getAllUserRoles();
       res.json(roles);
     } catch (error: any) {
       console.error("Failed to fetch roles:", error);
