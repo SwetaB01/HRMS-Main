@@ -46,15 +46,6 @@ export default function Leaves() {
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: leaveTypes } = useQuery<Array<{ id: string; name: string }>>({
-    queryKey: ["/api/leave-types"],
-  });
-
-  const getLeaveTypeName = (leaveTypeId: string) => {
-    const leaveType = leaveTypes?.find(type => type.id === leaveTypeId);
-    return leaveType?.name || leaveTypeId;
-  };
-
   const pendingLeaves = useMemo(() => {
     if (!leaves || !currentUser) return [];
     
@@ -228,7 +219,7 @@ export default function Leaves() {
                   {pendingLeaves.map((leave) => (
                     <TableRow key={leave.id}>
                       <TableCell>{leave.employeeName}</TableCell>
-                      <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
+                      <TableCell>{leave.leaveTypeId}</TableCell>
                       <TableCell>{leave.fromDate}</TableCell>
                       <TableCell>{leave.toDate}</TableCell>
                       <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
@@ -300,7 +291,7 @@ export default function Leaves() {
                 ) : leaves && leaves.length > 0 ? (
                   leaves.map((leave) => (
                     <TableRow key={leave.id} data-testid={`row-leave-${leave.id}`}>
-                      <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
+                      <TableCell>{leave.leaveTypeId}</TableCell>
                       <TableCell>{leave.fromDate}</TableCell>
                       <TableCell>{leave.toDate}</TableCell>
                       <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
