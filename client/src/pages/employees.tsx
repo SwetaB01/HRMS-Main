@@ -40,6 +40,27 @@ export default function Employees() {
     queryKey: ["/api/roles"],
   });
 
+  const { data: currentUser } = useQuery<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    username: string;
+    roleName: string;
+    accessLevel: string;
+    roleId: string | null;
+  }>({
+    queryKey: ["/api/auth/me"],
+  });
+
+  // Check if current user can create employees (HR or Manager roles)
+  const canCreateEmployee = currentUser && (
+    currentUser.roleName === 'HR Executive' ||
+    currentUser.roleName === 'Manager' ||
+    currentUser.roleName === 'Tech Lead' ||
+    currentUser.roleName === 'Project Manager'
+  );
+
   const getRoleName = (roleId: string | null) => {
     if (!roleId || !roles) return null;
     const role = roles.find(r => r.id === roleId);
@@ -93,13 +114,14 @@ export default function Employees() {
             Manage employee profiles and access
           </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-employee">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Employee
-            </Button>
-          </DialogTrigger>
+        {canCreateEmployee && (
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-employee">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Employee
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Employee</DialogTitle>
@@ -119,6 +141,7 @@ export default function Employees() {
             />
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       <div className="flex items-center gap-4">

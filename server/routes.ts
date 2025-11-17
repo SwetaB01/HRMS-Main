@@ -26,6 +26,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // Get current user profile
+  app.get("/api/auth/me", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const user = await storage.getUserProfile(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get user role information
+      let roleName = 'Employee';
+      let accessLevel = 'Employee';
+      if (user.roleId) {
+        const role = await storage.getUserRole(user.roleId);
+        if (role) {
+          roleName = role.roleName;
+          accessLevel = role.accessLevel;
+        }
+      }
+
+      const userResponse = {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        username: user.username,
+        roleName,
+        accessLevel,
+        roleId: user.roleId,
+      };
+
+      res.json(userResponse);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user profile" });
+    }
+  });
+
   // Authentication Routes
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -175,7 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/employees", async (req, res) => {
+  app.post("/api/employees", requireHROrManager, async (req, res) => {
     try {
       // Validate request body with schema (it expects password field)
       const validated = insertUserProfileSchema.parse(req.body);
@@ -283,6 +321,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Not authenticated" });
     }
     next();
+  };
+
+  // Middleware to check if user has HR or Manager role
+  const requireHROrManager = async (req: any, res: any, next: any) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const user = await storage.getUserProfile(req.session.userId);
+      if (!user || !user.roleId) {
+        return res.status(403).json({ message: "Access denied. Role not assigned." });
+      }
+
+      const role = await storage.getUserRole(user.roleId);
+      if (!role) {
+        return res.status(403).json({ message: "Access denied. Invalid role." });
+      }
+
+      // Check if role is HR Executive or Manager (or Tech Lead/Project Manager which are manager-level)
+      const allowedRoles = ['HR Executive', 'Manager', 'Tech Lead', 'Project Manager'];
+      if (!allowedRoles.includes(role.roleName)) {
+        return res.status(403).json({ 
+          message: "Access denied. Only HR and Manager roles can create employee records." 
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Role check error:', error);
+      res.status(500).json({ message: "Failed to verify access permissions" });
+    }
   };
 
   // Attendance Routes
