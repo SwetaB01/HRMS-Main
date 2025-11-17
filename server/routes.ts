@@ -26,6 +26,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // Middleware to check authentication
+  const requireAuth = (req: any, res: any, next: any) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    next();
+  };
+
+  // Middleware to check if user has HR or Manager role
+  const requireHROrManager = async (req: any, res: any, next: any) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const user = await storage.getUserProfile(req.session.userId);
+      if (!user || !user.roleId) {
+        return res.status(403).json({ message: "Access denied. Role not assigned." });
+      }
+
+      const role = await storage.getUserRole(user.roleId);
+      if (!role) {
+        return res.status(403).json({ message: "Access denied. Invalid role." });
+      }
+
+      // Check if role is HR Executive or Manager (or Tech Lead/Project Manager which are manager-level)
+      const allowedRoles = ['HR Executive', 'Manager', 'Tech Lead', 'Project Manager'];
+      if (!allowedRoles.includes(role.roleName)) {
+        return res.status(403).json({ 
+          message: "Access denied. Only HR and Manager roles can create employee records." 
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Role check error:', error);
+      res.status(500).json({ message: "Failed to verify access permissions" });
+    }
+  };
+
   // Get current user profile
   app.get("/api/auth/me", requireAuth, async (req, res) => {
     try {
@@ -314,46 +354,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
     }
   });
-
-  // Middleware to check authentication
-  const requireAuth = (req: any, res: any, next: any) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    next();
-  };
-
-  // Middleware to check if user has HR or Manager role
-  const requireHROrManager = async (req: any, res: any, next: any) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    try {
-      const user = await storage.getUserProfile(req.session.userId);
-      if (!user || !user.roleId) {
-        return res.status(403).json({ message: "Access denied. Role not assigned." });
-      }
-
-      const role = await storage.getUserRole(user.roleId);
-      if (!role) {
-        return res.status(403).json({ message: "Access denied. Invalid role." });
-      }
-
-      // Check if role is HR Executive or Manager (or Tech Lead/Project Manager which are manager-level)
-      const allowedRoles = ['HR Executive', 'Manager', 'Tech Lead', 'Project Manager'];
-      if (!allowedRoles.includes(role.roleName)) {
-        return res.status(403).json({ 
-          message: "Access denied. Only HR and Manager roles can create employee records." 
-        });
-      }
-
-      next();
-    } catch (error) {
-      console.error('Role check error:', error);
-      res.status(500).json({ message: "Failed to verify access permissions" });
-    }
-  };
 
   // Attendance Routes
   app.get("/api/attendance", requireAuth, async (req, res) => {
