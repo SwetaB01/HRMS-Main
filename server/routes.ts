@@ -874,14 +874,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fromDate = new Date(leave.fromDate);
       const toDate = new Date(leave.toDate);
       const conflictingDates: string[] = [];
+      const currentDate = new Date(fromDate);
 
-      for (let date = new Date(fromDate); date <= toDate; date.setDate(date.getDate() + 1)) {
-        const attendanceDate = date.toISOString().split('T')[0];
+      while (currentDate <= toDate) {
+        const attendanceDate = currentDate.toISOString().split('T')[0];
         const existingAttendance = await storage.getAttendanceByDate(leave.userId, attendanceDate);
 
         if (existingAttendance && existingAttendance.status === 'Present') {
           conflictingDates.push(attendanceDate);
         }
+        currentDate.setDate(currentDate.getDate() + 1);
       }
 
       if (conflictingDates.length > 0) {
@@ -898,8 +900,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create attendance records for the leave period
       try {
-        for (let date = new Date(fromDate); date <= toDate; date.setDate(date.getDate() + 1)) {
-          const attendanceDate = date.toISOString().split('T')[0];
+        const currentDate = new Date(fromDate);
+        while (currentDate <= toDate) {
+          const attendanceDate = currentDate.toISOString().split('T')[0];
 
           // Check if attendance record already exists for this date
           const existingAttendance = await storage.getAttendanceByDate(approvedLeave.userId, attendanceDate);
@@ -934,6 +937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalDuration: approvedLeave.halfDay ? '4' : '8',
             });
           }
+          currentDate.setDate(currentDate.getDate() + 1);
         }
       } catch (attendanceError) {
         console.error('Failed to create attendance records for leave:', attendanceError);
