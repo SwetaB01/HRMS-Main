@@ -7,6 +7,8 @@ import { emailService } from "./email";
 import session from "express-session";
 
 // Simple in-memory session store (for production, use Redis or database-backed store)
+import MemoryStore from 'memorystore';
+
 declare module 'express-session' {
   interface SessionData {
     userId: string;
@@ -14,15 +16,21 @@ declare module 'express-session' {
   }
 }
 
+const SessionStore = MemoryStore(session);
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session middleware
   app.use(session({
     secret: process.env.SESSION_SECRET || 'midcai-hrms-secret-key-change-in-production',
     resave: false,
     saveUninitialized: false,
+    store: new SessionStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    }),
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Set to false for development
       httpOnly: true,
+      sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
   }));

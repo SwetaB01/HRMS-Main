@@ -44,12 +44,29 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-    }
+    // Check if user is already logged in by checking server session
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const user = await response.json();
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+          localStorage.setItem('currentUser', JSON.stringify(user));
+        } else {
+          // Clear localStorage if session is invalid
+          localStorage.removeItem('currentUser');
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('currentUser');
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
   }, []);
 
   const handleLogin = async (credentials: { username: string; password: string }) => {
