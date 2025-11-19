@@ -565,6 +565,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/attendance/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { id } = req.params;
+
+      // Get the attendance record
+      const attendance = await storage.getAttendance(id);
+      if (!attendance) {
+        return res.status(404).json({ message: "Attendance record not found" });
+      }
+
+      // Check if user owns this attendance record
+      if (attendance.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Check if there's an approved leave for this date
+      const allLeaves = await storage.getLeavesByUser(userId);
+      const approvedLeave = allLeaves.find(leave => {
+        if (leave.status !== 'Approved') return false;
+        const fromDate = new Date(leave.fromDate);
+        const toDate = new Date(leave.toDate);
+        const attendDate = new Date(attendance.attendanceDate);
+        return attendDate >= fromDate && attendDate <= toDate;
+      });
+
+      if (approvedLeave && attendance.status !== 'On Leave') {
+        return res.status(400).json({ 
+          message: "Cannot delete this attendance record. You have an approved leave for this date." 
+        });
+      }
+
+      // Delete the attendance record (implementation depends on storage)
+      // For now, we'll just update it to a deleted status or actually delete it
+      // Assuming storage has a delete method
+      const deleted = await storage.deleteAttendance(id);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete attendance record" });
+      }
+
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('Attendance deletion error:', error);
+      res.status(400).json({ message: error.message || "Failed to delete attendance" });
+    }
+  });
+
   app.post("/api/attendance/:id/regularize", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
@@ -706,34 +754,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { comments } = req.body;
       const managerId = req.session.userId!;
 
-      const leave = await storage.approveLeave(id, managerId, comments);
+      const leave = await storage.getLeave(id);
       if (!leave) {
+        return res.status(404).json({ message: "Leave not found" });
+      }
+
+      // Check if there's any existing "Present" attendance for the leave period
+      const fromDate = new Date(leave.fromDate);
+      const toDate = new Date(leave.toDate);
+      const conflictingDates: string[] = [];
+      
+      for (let date = new Date(fromDate); date <= toDate; date.setDate(date.getDate() + 1)) {
+        const attendanceDate = date.toISOString().split('T')[0];
+        const existingAttendance = await storage.getAttendanceByDate(leave.userId, attendanceDate);
+        
+        if (existingAttendance && existingAttendance.status === 'Present') {
+          conflictingDates.push(attendanceDate);
+        }
+      }
+
+      if (conflictingDates.length > 0) {
+        return res.status(400).json({ 
+          message: `Cannot approve leave. Employee has already marked attendance as Present for the following dates: ${conflictingDates.join(', ')}. Please remove those attendance records first.` 
+        });
+      }
+
+      // Approve the leave
+      const approvedLeave = await storage.approveLeave(id, managerId, comments);
+      if (!approvedLeave) {
         return res.status(404).json({ message: "Leave not found" });
       }
 
       // Create attendance records for the leave period
       try {
-        const fromDate = new Date(leave.fromDate);
-        const toDate = new Date(leave.toDate);
-        
-        // Loop through each day in the leave period
         for (let date = new Date(fromDate); date <= toDate; date.setDate(date.getDate() + 1)) {
           const attendanceDate = date.toISOString().split('T')[0];
           
           // Check if attendance record already exists for this date
-          const existingAttendance = await storage.getAttendanceByDate(leave.userId, attendanceDate);
+          const existingAttendance = await storage.getAttendanceByDate(approvedLeave.userId, attendanceDate);
           
           if (!existingAttendance) {
             // Create attendance record with "On Leave" status
             await storage.createAttendance({
-              userId: leave.userId,
+              userId: approvedLeave.userId,
               attendanceDate,
               status: 'On Leave',
-              leaveTypeId: leave.leaveTypeId,
-              companyId: leave.companyId || null,
+              leaveTypeId: approvedLeave.leaveTypeId,
+              companyId: approvedLeave.companyId || null,
               checkIn: null,
               checkOut: null,
-              totalDuration: leave.halfDay ? '4' : '8',
+              totalDuration: approvedLeave.halfDay ? '4' : '8',
               earlySignIn: false,
               earlySignOut: false,
               lateSignIn: false,
@@ -745,12 +815,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               regularizationApprovedBy: null,
               regularizationApprovedAt: null,
             });
-          } else if (existingAttendance.status !== 'On Leave') {
-            // Update existing attendance to "On Leave" if it's not already
+          } else {
+            // Update existing attendance to "On Leave"
             await storage.updateAttendance(existingAttendance.id, {
               status: 'On Leave',
-              leaveTypeId: leave.leaveTypeId,
-              totalDuration: leave.halfDay ? '4' : '8',
+              leaveTypeId: approvedLeave.leaveTypeId,
+              totalDuration: approvedLeave.halfDay ? '4' : '8',
             });
           }
         }
@@ -761,17 +831,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send email notification to employee
       try {
-        const employee = await storage.getUserProfile(leave.userId);
+        const employee = await storage.getUserProfile(approvedLeave.userId);
         const leaveTypes = await storage.getAllLeaveTypes();
-        const leaveTypeName = leaveTypes.find(lt => lt.id === leave.leaveTypeId)?.name || 'Leave';
+        const leaveTypeName = leaveTypes.find(lt => lt.id === approvedLeave.leaveTypeId)?.name || 'Leave';
 
         if (employee && employee.email) {
           await emailService.sendLeaveApprovalNotification(
             employee.email,
             `${employee.firstName} ${employee.lastName}`,
             leaveTypeName,
-            leave.fromDate,
-            leave.toDate,
+            approvedLeave.fromDate,
+            approvedLeave.toDate,
             'Approved',
             comments
           );
@@ -781,7 +851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue even if email fails
       }
 
-      res.json(leave);
+      res.json(approvedLeave);
     } catch (error) {
       res.status(500).json({ message: "Failed to approve leave" });
     }

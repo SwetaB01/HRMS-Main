@@ -334,6 +334,11 @@ export class PostgresStorage implements IStorage {
     return updated;
   }
 
+  async deleteAttendance(id: string): Promise<boolean> {
+    const result = await db.delete(attendance).where(eq(attendance.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
   async checkIn(userId: string): Promise<Attendance> {
     const today = new Date().toISOString().split('T')[0];
     const existing = await this.getTodayAttendance(userId);

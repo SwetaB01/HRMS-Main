@@ -79,6 +79,7 @@ export interface IStorage {
   getTodayAttendance(userId: string): Promise<Attendance | undefined>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   updateAttendance(id: string, attendance: Partial<InsertAttendance>): Promise<Attendance | undefined>;
+  deleteAttendance(id: string): Promise<boolean>;
   checkIn(userId: string): Promise<Attendance>;
   checkOut(userId: string): Promise<Attendance | undefined>;
 
@@ -494,6 +495,10 @@ export class MemStorage implements IStorage {
     const updated = { ...existing, ...attendance };
     this.attendance.set(id, updated);
     return updated;
+  }
+
+  async deleteAttendance(id: string): Promise<boolean> {
+    return this.attendance.delete(id);
   }
 
   async checkIn(userId: string): Promise<Attendance> {

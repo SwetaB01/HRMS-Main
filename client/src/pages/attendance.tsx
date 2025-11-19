@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Calendar, Clock, Plus, Edit, CheckCircle } from "lucide-react";
+import { Calendar, Clock, Plus, Edit, CheckCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -212,6 +212,35 @@ export default function Attendance() {
       toast({
         title: "Success",
         description: "Regularization request submitted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteAttendanceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/attendance/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete attendance');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance/today-status"] });
+      toast({
+        title: "Success",
+        description: "Attendance record deleted successfully",
       });
     },
     onError: (error: Error) => {
@@ -589,6 +618,19 @@ export default function Attendance() {
                             disabled={record.regularizationRequested && record.regularizationStatus === 'Pending'}
                           >
                             Regularize
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this attendance record?')) {
+                                deleteAttendanceMutation.mutate(record.id);
+                              }
+                            }}
+                            disabled={deleteAttendanceMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
                           </Button>
                         </div>
                       </TableCell>
