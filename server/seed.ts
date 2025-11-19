@@ -134,6 +134,27 @@ export async function seedDatabase() {
       await db.update(userProfiles).set({ roleId: adminRole.id }).where(eq(userProfiles.id, adminUser.id));
     }
 
+    // Create a second employee with administration role
+    const adminEmployee = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'john.admin') });
+    if (!adminEmployee) {
+      console.log('Creating admin employee...');
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      await db.insert(userProfiles).values({
+        roleId: adminRole.id, // Assign Admin role
+        firstName: 'John',
+        lastName: 'Administrator',
+        email: 'john.admin@midcai.com',
+        username: 'john.admin',
+        passwordHash: hashedPassword,
+        status: 'Active',
+        userType: 'Admin',
+        language: 'English',
+        timezone: 'Asia/Kolkata',
+        insuranceOpted: false,
+        joiningDate: new Date().toISOString().split('T')[0],
+      });
+    }
+
     // Create default leave types
     await db.insert(leaveTypes).values([
       {
