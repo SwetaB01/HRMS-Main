@@ -212,7 +212,10 @@ Payroll View          |  ✓    | ✓   |         |     ✓      |  Own
 
 **Business Logic Enhancements:**
 - Elevated roles (Manager, HR, Admin) can operate on team records, not just their own
-- Attendance deletion allows managers/HR/admins to delete team attendance
+- Attendance management:
+  - Manual attendance creation: Managers/HR/Admins can create attendance for team members by providing `userId` in request body
+  - Attendance deletion: Managers/HR/Admins can delete team attendance records
+  - Check-in/check-out: Self-service only (employees mark their own attendance)
 - Reimbursement and payroll GET routes filter data based on role:
   - Employees see only their own records
   - Elevated roles see all records (future: filtered by team/department)

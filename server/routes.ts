@@ -10,6 +10,7 @@ import session from "express-session";
 declare module 'express-session' {
   interface SessionData {
     userId: string;
+    userRole?: { accessLevel: string; roleName: string };
   }
 }
 
@@ -144,8 +145,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Account is inactive. Please contact administrator." });
       }
 
-      // Store user ID in session
+      // Get user role information and store in session
+      let roleName = 'Employee';
+      let roleInfo = null;
+      if (user.roleId) {
+        const role = await storage.getUserRole(user.roleId);
+        if (role) {
+          roleName = role.roleName;
+          roleInfo = {
+            accessLevel: role.accessLevel,
+            roleName: role.roleName
+          };
+        }
+      }
+
+      // Store user ID and role in session
       req.session.userId = user.id;
+      req.session.userRole = roleInfo;
 
       // Save session explicitly to ensure it persists
       await new Promise<void>((resolve, reject) => {
@@ -154,13 +170,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           else resolve();
         });
       });
-
-      // Get user role information
-      let roleName = 'Employee';
-      if (user.roleId) {
-        const role = await storage.getUserRole(user.roleId);
-        if (role) roleName = role.roleName;
-      }
 
       const userResponse = {
         id: user.id,
@@ -424,11 +433,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/attendance/manual", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const { attendanceDate, status, checkIn, checkOut } = req.body;
+      const currentUserId = req.session.userId!;
+      let userRole = req.session.userRole;
+      const { userId: targetUserId, attendanceDate, status, checkIn, checkOut } = req.body;
+      
+      // Fallback: fetch role from storage if not in session (for backward compatibility with existing sessions)
+      if (!userRole) {
+        const user = await storage.getUserProfile(currentUserId);
+        if (user?.roleId) {
+          const role = await storage.getUserRole(user.roleId);
+          if (role) {
+            userRole = {
+              accessLevel: role.accessLevel,
+              roleName: role.roleName
+            };
+            // Update session for future requests
+            req.session.userRole = userRole;
+          }
+        }
+      }
+      
+      // Managers, HR, and Admins can create attendance for team members; employees only for themselves
+      const canManageTeam = ['Admin', 'HR', 'Manager'].includes(userRole?.accessLevel || '');
+      const effectiveUserId = (canManageTeam && targetUserId) ? targetUserId : currentUserId;
 
       // Check if there's an approved leave for this date
-      const allLeaves = await storage.getLeavesByUser(userId);
+      const allLeaves = await storage.getLeavesByUser(effectiveUserId);
       const approvedLeave = allLeaves.find(leave => {
         if (leave.status !== 'Approved') return false;
         const fromDate = new Date(leave.fromDate);
@@ -439,12 +469,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (approvedLeave && status !== 'On Leave') {
         return res.status(400).json({ 
-          message: "Cannot mark attendance as Present. You have an approved leave for this date." 
+          message: "Cannot mark attendance as Present. Employee has an approved leave for this date." 
         });
       }
 
       // Check if attendance already exists for this date
-      const existingAttendance = await storage.getAttendanceByDate(userId, attendanceDate);
+      const existingAttendance = await storage.getAttendanceByDate(effectiveUserId, attendanceDate);
       if (existingAttendance) {
         return res.status(400).json({ 
           message: "Attendance record already exists for this date. Please edit the existing record instead." 
@@ -471,7 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const attendance = await storage.createAttendance({
-        userId,
+        userId: effectiveUserId,
         attendanceDate,
         status,
         checkIn: checkInDate,
