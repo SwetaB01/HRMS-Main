@@ -292,7 +292,7 @@ export class MemStorage implements IStorage {
   async updateRole(id: string, role: Partial<InsertUserRole>): Promise<UserRole | undefined> {
     const existing = this.userRoles.get(id);
     if (!existing) return undefined;
-    
+
     const updated = { ...existing, ...role };
     this.userRoles.set(id, updated);
     return updated;
@@ -473,12 +473,6 @@ export class MemStorage implements IStorage {
     const today = new Date().toISOString().split('T')[0];
     return Array.from(this.attendance.values()).find(
       a => a.userId === userId && a.attendanceDate === today
-    );
-  }
-
-  async getAttendanceByDate(userId: string, date: string): Promise<Attendance | undefined> {
-    return Array.from(this.attendance.values()).find(
-      a => a.userId === userId && a.attendanceDate === date
     );
   }
 

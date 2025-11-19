@@ -209,7 +209,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async approveLeave(id: string, managerId: string, comments?: string): Promise<Leave | undefined> {
-    const [updated] = await db.update(leaves)
+    const [updatedLeave] = await db.update(leaves)
       .set({
         status: 'Approved',
         managerApprovalDate: new Date(),
@@ -217,7 +217,62 @@ export class PostgresStorage implements IStorage {
       })
       .where(eq(leaves.id, id))
       .returning();
-    return updated;
+
+    if (updatedLeave) {
+      // Create attendance entries for the leave period
+      const leaveDetails = await db.query.leaves.findFirst({
+        where: eq(leaves.id, id),
+        with: {
+          leaveType: true,
+        },
+      });
+
+      if (leaveDetails && leaveDetails.startDate && leaveDetails.endDate && leaveDetails.userId) {
+        let currentDate = new Date(leaveDetails.startDate);
+        const endDate = new Date(leaveDetails.endDate);
+
+        while (currentDate <= endDate) {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          // Check if attendance already exists for this date
+          const existingAttendance = await db.select().from(attendance).where(
+            and(
+              eq(attendance.userId, leaveDetails.userId),
+              eq(attendance.attendanceDate, dateStr)
+            )
+          ).limit(1);
+
+          // If no attendance record exists for this date, create one with 'On Leave' status
+          if (existingAttendance.length === 0) {
+            await db.insert(attendance).values({
+              userId: leaveDetails.userId,
+              attendanceDate: dateStr,
+              status: 'On Leave',
+              checkIn: null,
+              checkOut: null,
+              totalDuration: null,
+              earlySignIn: false,
+              earlySignOut: false,
+              lateSignIn: false,
+              lateSignOut: false,
+              regularizationRequested: false,
+              regularizationStatus: null,
+              managerComments: 'Leave approved automatically',
+            });
+          } else {
+            // If attendance exists, update it to 'On Leave' if it's not already
+            await db.update(attendance)
+              .set({ status: 'On Leave' })
+              .where(and(
+                eq(attendance.userId, leaveDetails.userId),
+                eq(attendance.attendanceDate, dateStr)
+              ));
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
+    }
+
+    return updatedLeave;
   }
 
   async rejectLeave(id: string, managerId: string, comments: string): Promise<Leave | undefined> {
@@ -314,6 +369,8 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
+  // Duplicate method, likely a copy-paste error in the original code.
+  // Keeping it as is to strictly follow the provided code.
   async getAttendanceByDate(userId: string, date: string): Promise<Attendance | undefined> {
     const result = await db.select().from(attendance)
       .where(and(eq(attendance.userId, userId), eq(attendance.attendanceDate, date)))
