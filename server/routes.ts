@@ -346,13 +346,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/employees/:id", requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
+      const currentUserId = req.session.userId!;
+
+      // Prevent deleting yourself
+      if (id === currentUserId) {
+        return res.status(400).json({ message: "You cannot delete your own account" });
+      }
+
       const deleted = await storage.deleteUserProfile(id);
       if (!deleted) {
         return res.status(404).json({ message: "Employee not found" });
       }
       res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete employee" });
+    } catch (error: any) {
+      console.error('Employee deletion error:', error);
+      res.status(500).json({ message: error.message || "Failed to delete employee" });
     }
   });
 
