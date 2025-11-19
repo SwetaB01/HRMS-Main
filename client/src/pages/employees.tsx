@@ -53,13 +53,11 @@ export default function Employees() {
     queryKey: ["/api/auth/me"],
   });
 
-  // Check if current user can create employees (HR, Manager, or Admin roles)
+  // Check if current user can create employees (HR, Manager, or Admin access levels)
   const canCreateEmployee = currentUser && (
-    currentUser.roleName === 'HR Executive' ||
-    currentUser.roleName === 'Manager' ||
-    currentUser.roleName === 'Tech Lead' ||
-    currentUser.roleName === 'Project Manager' ||
-    currentUser.roleName === 'Admin'
+    currentUser.accessLevel === 'Admin' ||
+    currentUser.accessLevel === 'HR' ||
+    currentUser.accessLevel === 'Manager'
   );
 
   const getRoleName = (roleId: string | null) => {
