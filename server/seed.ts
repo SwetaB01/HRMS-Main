@@ -52,10 +52,10 @@ export async function seedDatabase() {
 
   if (needsReset) {
     console.log('Resetting roles...');
-    
+
     // First, set all user profiles roleId to null to avoid foreign key constraint
     await db.update(userProfiles).set({ roleId: null });
-    
+
     // Now delete all existing roles
     await db.delete(userRoles);
 
@@ -97,7 +97,7 @@ export async function seedDatabase() {
     for (const role of rolesData) {
       await db.insert(userRoles).values(role);
     }
-    
+
     console.log('Roles reset complete. Please reassign roles to users.');
   }
 
@@ -105,26 +105,34 @@ export async function seedDatabase() {
   if (!userAlreadyExists) {
     // Get the Super Admin role (it should already exist from the roles reset above)
     const [adminRole] = await db.select().from(userRoles).where(eq(userRoles.roleName, 'Super Admin'));
-    
+
     if (!adminRole) {
       throw new Error('Super Admin role not found! Database seeding failed.');
     }
 
-    // Create default admin user
-    const hashedPassword = await bcrypt.hash('admin', 10);
-    await db.insert(userProfiles).values({
-      roleId: adminRole.id,
-      firstName: 'Admin',
-      lastName: 'User',
-      email: 'admin@midcai.com',
-      username: 'admin',
-      passwordHash: hashedPassword,
-      status: 'Active',
-      userType: 'Admin',
-      language: 'English',
-      timezone: 'Asia/Kolkata',
-      insuranceOpted: false,
-    });
+    // Create admin user with Admin role
+    const adminUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') });
+    if (!adminUser) {
+      console.log('Creating admin user...');
+      const hashedPassword = await bcrypt.hash('admin', 10);
+      await db.insert(userProfiles).values({
+        roleId: adminRole.id, // Assign Admin role
+        firstName: 'Admin',
+        lastName: 'User',
+        email: 'admin@midcai.com',
+        username: 'admin',
+        passwordHash: hashedPassword,
+        status: 'Active',
+        userType: 'Admin',
+        language: 'English',
+        timezone: 'Asia/Kolkata',
+        insuranceOpted: false,
+      });
+    } else if (!adminUser.roleId) {
+      // Update existing admin user to have Admin role
+      console.log('Assigning Admin role to existing admin user...');
+      await db.update(userProfiles).set({ roleId: adminRole.id }).where(eq(userProfiles.id, adminUser.id));
+    }
 
     // Create default leave types
     await db.insert(leaveTypes).values([
