@@ -30,7 +30,7 @@ export async function seedDatabase() {
   const existingDepts = await db.select().from(departments);
   if (existingDepts.length === 0) {
     console.log('Seeding departments...');
-    await db.insert(departments).values([
+    const deptData = [
       { id: 'project-management', name: 'Project Management', parentDeptId: null },
       { id: 'marketing', name: 'Marketing', parentDeptId: null },
       { id: 'sales', name: 'Sales', parentDeptId: null },
@@ -38,12 +38,15 @@ export async function seedDatabase() {
       { id: 'accounts', name: 'Accounts', parentDeptId: null },
       { id: 'inventory', name: 'Inventory', parentDeptId: null },
       { id: 'it', name: 'IT', parentDeptId: null },
-    ]);
+    ];
+    for (const dept of deptData) {
+      await db.insert(departments).values(dept);
+    }
   }
 
   // Check if roles need to be reset
   const existingRoles = await db.select().from(userRoles);
-  const desiredRoles = ['Developer', 'Tech Lead', 'HR Executive', 'Project Manager'];
+  const desiredRoles = ['Super Admin', 'HR Admin', 'Manager', 'Employee', 'Accountant'];
   const needsReset = existingRoles.length === 0 || 
                      !desiredRoles.every(role => existingRoles.some(r => r.roleName === role));
 
@@ -56,12 +59,38 @@ export async function seedDatabase() {
     // Now delete all existing roles
     await db.delete(userRoles);
 
-    // Seed new roles
+    // Seed standardized roles with proper access levels
     const rolesData = [
-      { roleName: 'Developer', roleDescription: 'Software developer', accessType: 'Limited Access', accessLevel: 'Employee' },
-      { roleName: 'Tech Lead', roleDescription: 'Technical team leader', accessType: 'Limited Access', accessLevel: 'Manager' },
-      { roleName: 'HR Executive', roleDescription: 'Human resources executive', accessType: 'Limited Access', accessLevel: 'Manager' },
-      { roleName: 'Project Manager', roleDescription: 'Project management lead', accessType: 'Limited Access', accessLevel: 'Manager' },
+      { 
+        roleName: 'Super Admin', 
+        roleDescription: 'Full system access with all permissions', 
+        accessType: 'Full Access', 
+        accessLevel: 'Admin' 
+      },
+      { 
+        roleName: 'HR Admin', 
+        roleDescription: 'HR department with employee, payroll, and leave management access', 
+        accessType: 'Limited Access', 
+        accessLevel: 'HR' 
+      },
+      { 
+        roleName: 'Manager', 
+        roleDescription: 'Team manager with approval and team management permissions', 
+        accessType: 'Limited Access', 
+        accessLevel: 'Manager' 
+      },
+      { 
+        roleName: 'Accountant', 
+        roleDescription: 'Finance department with payroll and reimbursement access', 
+        accessType: 'Limited Access', 
+        accessLevel: 'Accountant' 
+      },
+      { 
+        roleName: 'Employee', 
+        roleDescription: 'Regular employee with access to own data only', 
+        accessType: 'Limited Access', 
+        accessLevel: 'Employee' 
+      },
     ];
 
     console.log('Adding new roles...');
@@ -74,13 +103,12 @@ export async function seedDatabase() {
 
   // Only create admin user and default data if it doesn't exist
   if (!userAlreadyExists) {
-    // Create default admin role
-    const [adminRole] = await db.insert(userRoles).values({
-      roleName: 'Administrator',
-      roleDescription: 'Full system access',
-      accessType: 'Admin',
-      accessLevel: 'Full',
-    }).returning();
+    // Get the Super Admin role (it should already exist from the roles reset above)
+    const [adminRole] = await db.select().from(userRoles).where(eq(userRoles.roleName, 'Super Admin'));
+    
+    if (!adminRole) {
+      throw new Error('Super Admin role not found! Database seeding failed.');
+    }
 
     // Create default admin user
     const hashedPassword = await bcrypt.hash('admin', 10);

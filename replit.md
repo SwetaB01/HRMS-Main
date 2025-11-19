@@ -143,12 +143,80 @@ The HRMS system includes a comprehensive email notification system built with No
 - Password hashing using bcryptjs
 - Session-based authentication with credentials stored client-side (localStorage)
 - Login state management in React App component
+- User role information included in session (`req.session.userRole`)
 
-**Authorization:**
-- Role-based access control via `user_roles` table
-- Access types and levels defined in role configuration
-- Role information included in user session data
-- Frontend components conditionally rendered based on user role
+**Authorization - Role-Based Access Control:**
+
+The system implements a comprehensive role-based permission system with five standardized roles:
+
+**Role Hierarchy:**
+1. **Super Admin** (accessLevel: 'Admin')
+   - Full system access with all permissions
+   - Can manage all data across the system
+   - Can create, update, delete roles
+   - Automatically has access to all routes
+
+2. **HR Admin** (accessLevel: 'HR')
+   - Employee lifecycle management (create, update employees)
+   - Payroll processing and management
+   - Leave management and approvals
+   - View all reimbursements
+   - Holiday management
+
+3. **Manager** (accessLevel: 'Manager')
+   - Approve/reject team leave requests
+   - Approve reimbursements (manager level)
+   - Delete team attendance records
+   - View all reimbursements
+   - View team dashboard statistics
+
+4. **Accountant** (accessLevel: 'Accountant')
+   - Payroll processing and approval
+   - Reimbursement approvals (accountant level)
+   - View all payrolls and reimbursements
+   - Financial data access
+
+5. **Employee** (accessLevel: 'Employee')
+   - View and edit own profile
+   - Mark own attendance
+   - Apply for leaves
+   - Submit reimbursement claims
+   - View own payroll records
+   - Access own data only
+
+**Permission Middleware:**
+- `requireAuth` - Ensures user is authenticated
+- `requireAdmin` - Admin-only access
+- `requireHROrAdmin` - HR and Admin access
+- `requireManagerOrHROrAdmin` - Manager, HR, and Admin access
+- `requireAccountantOrAdmin` - Accountant and Admin access
+- `allowRoles(...levels)` - Flexible middleware accepting multiple access levels
+
+**Permission Matrix:**
+```
+Route Type            | Admin | HR | Manager | Accountant | Employee
+----------------------|-------|-----|---------|------------|----------
+Role Management       |  ✓    |     |         |            |
+Employee CRUD         |  ✓    | ✓   |         |            |
+Dashboard Stats       |  ✓    | ✓   |    ✓    |     ✓      |    ✓
+Attendance (Delete)   |  ✓    | ✓   |    ✓    |            |  Own
+Leave Apply           |  ✓    | ✓   |    ✓    |            |    ✓
+Leave Approve/Reject  |  ✓    | ✓   |    ✓    |            |
+Holiday Management    |  ✓    | ✓   |         |            |  View
+Reimburse Submit      |  ✓    | ✓   |    ✓    |     ✓      |    ✓
+Reimburse View All    |  ✓    | ✓   |    ✓    |     ✓      |  Own
+Reimburse Approve     |  ✓    | ✓   |    ✓    |     ✓      |
+Payroll Create        |  ✓    | ✓   |         |     ✓      |
+Payroll View          |  ✓    | ✓   |         |     ✓      |  Own
+```
+
+**Business Logic Enhancements:**
+- Elevated roles (Manager, HR, Admin) can operate on team records, not just their own
+- Attendance deletion allows managers/HR/admins to delete team attendance
+- Reimbursement and payroll GET routes filter data based on role:
+  - Employees see only their own records
+  - Elevated roles see all records (future: filtered by team/department)
+- Admin role automatically inherits all permissions
 
 ## External Dependencies
 

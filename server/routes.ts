@@ -34,37 +34,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
-  // Middleware to check if user has HR or Manager role
-  const requireHROrManager = async (req: any, res: any, next: any) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    try {
-      const user = await storage.getUserProfile(req.session.userId);
-      if (!user || !user.roleId) {
-        return res.status(403).json({ message: "Access denied. Role not assigned." });
+  // Flexible role-based access control middleware
+  // Accepts array of allowed access levels (Admin, HR, Manager, Accountant, Employee)
+  const allowRoles = (...allowedAccessLevels: string[]) => {
+    return async (req: any, res: any, next: any) => {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
       }
 
-      const role = await storage.getUserRole(user.roleId);
-      if (!role) {
-        return res.status(403).json({ message: "Access denied. Invalid role." });
-      }
+      try {
+        const user = await storage.getUserProfile(req.session.userId);
+        if (!user || !user.roleId) {
+          return res.status(403).json({ message: "Access denied. Role not assigned." });
+        }
 
-      // Check if role is HR Executive, Manager, Admin, or manager-level roles
-      const allowedRoles = ['HR Executive', 'Manager', 'Tech Lead', 'Project Manager', 'Admin'];
-      if (!allowedRoles.includes(role.roleName)) {
-        return res.status(403).json({ 
-          message: "Access denied. Only HR, Manager, and Admin roles can create employee records." 
-        });
-      }
+        const role = await storage.getUserRole(user.roleId);
+        if (!role) {
+          return res.status(403).json({ message: "Access denied. Invalid role." });
+        }
 
-      next();
-    } catch (error) {
-      console.error('Role check error:', error);
-      res.status(500).json({ message: "Failed to verify access permissions" });
-    }
+        // Admin has access to everything
+        if (role.accessLevel === 'Admin') {
+          return next();
+        }
+
+        // Check if user's access level is in the allowed list
+        if (!allowedAccessLevels.includes(role.accessLevel)) {
+          return res.status(403).json({ 
+            message: `Access denied. This action requires ${allowedAccessLevels.join(' or ')} role.` 
+          });
+        }
+
+        next();
+      } catch (error) {
+        console.error('Role check error:', error);
+        res.status(500).json({ message: "Failed to verify access permissions" });
+      }
+    };
   };
+
+  // Helper middleware for common permission combinations
+  const requireAdmin = allowRoles('Admin');
+  const requireHROrAdmin = allowRoles('HR', 'Admin');
+  const requireManagerOrHROrAdmin = allowRoles('Manager', 'HR', 'Admin');
+  const requireAccountantOrAdmin = allowRoles('Accountant', 'Admin');
 
   // Get current user profile
   app.get("/api/auth/me", async (req, res) => {
@@ -164,8 +177,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Role routes
-  app.get("/api/roles", async (req, res) => {
+  // Role routes - Admin only per permission matrix
+  app.get("/api/roles", requireAdmin, async (req, res) => {
     try {
       const roles = await storage.getAllUserRoles();
       res.json(roles);
@@ -175,15 +188,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/roles", async (req, res) => {
-    // NOTE: In a real application, you'd want to check if the user is authenticated and authorized to create roles.
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
+  app.post("/api/roles", requireAdmin, async (req, res) => {
     try {
-      // Assuming a schema validation for req.body would happen here if applicable
-      const role = await storage.createUserRole(req.body); // Assuming storage has a method to create a role
+      const role = await storage.createUserRole(req.body);
       res.status(201).json(role);
     } catch (error: any) {
       console.error("Failed to create role:", error);
@@ -191,15 +198,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/roles/:id", async (req, res) => {
-    // NOTE: In a real application, you'd want to check if the user is authenticated and authorized to update roles.
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
+  app.put("/api/roles/:id", requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      // Assuming a schema validation for req.body would happen here if applicable
       const role = await storage.updateRole(id, req.body);
       if (!role) {
         return res.status(404).json({ message: "Role not found" });
@@ -211,12 +212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/roles/:id", async (req, res) => {
-    // NOTE: In a real application, you'd want to check if the user is authenticated and authorized to delete roles.
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
+  app.delete("/api/roles/:id", requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
 
@@ -245,8 +241,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // Employee Management Routes
-  app.get("/api/employees", async (req, res) => {
+  // Employee Management Routes - HR and Admin can manage
+  app.get("/api/employees", requireHROrAdmin, async (req, res) => {
     try {
       const employees = await storage.getAllUserProfiles();
 
@@ -259,7 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/employees", requireHROrManager, async (req, res) => {
+  app.post("/api/employees", requireHROrAdmin, async (req, res) => {
     try {
       // Validate request body with schema (it expects password field)
       const validated = insertUserProfileSchema.parse(req.body);
@@ -272,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send welcome email to new employee
       try {
-        if (employee.email) {
+        if (employee.email && plainPassword) {
           await emailService.sendNewEmployeeWelcome(
             employee.email,
             `${employee.firstName} ${employee.lastName}`,
@@ -301,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/employees/:id", async (req, res) => {
+  app.patch("/api/employees/:id", requireHROrAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { password, ...otherFields } = req.body;
@@ -338,7 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/employees/:id", async (req, res) => {
+  app.delete("/api/employees/:id", requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const deleted = await storage.deleteUserProfile(id);
@@ -351,8 +347,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard Routes
-  app.get("/api/dashboard/stats", async (req, res) => {
+  // Dashboard Routes - All authenticated users can view
+  app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
       const stats = await storage.getDashboardStats();
       res.json(stats);
@@ -565,9 +561,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/attendance/:id", requireAuth, async (req, res) => {
+  app.delete("/api/attendance/:id", requireManagerOrHROrAdmin, async (req, res) => {
     try {
-      const userId = req.session.userId!;
+      const currentUserId = req.session.userId!;
+      const userRole = req.session.userRole;
       const { id } = req.params;
 
       // Get the attendance record
@@ -576,13 +573,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Attendance record not found" });
       }
 
-      // Check if user owns this attendance record
-      if (attendance.userId !== userId) {
+      // Managers, HR, and Admins can delete team attendance; employees can only delete their own
+      const canDelete = attendance.userId === currentUserId || 
+                       ['Admin', 'HR', 'Manager'].includes(userRole?.accessLevel || '');
+      
+      if (!canDelete) {
         return res.status(403).json({ message: "Access denied" });
       }
 
       // Check if there's an approved leave for this date
-      const allLeaves = await storage.getLeavesByUser(userId);
+      const allLeaves = await storage.getLeavesByUser(attendance.userId);
       const approvedLeave = allLeaves.find(leave => {
         if (leave.status !== 'Approved') return false;
         const fromDate = new Date(leave.fromDate);
@@ -844,7 +844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             leave.fromDate,
             leave.toDate,
             updateData.status, // Use the new status
-            updateData.comments || leave.comments // Use new comments if provided
+            updateData.managerComments || leave.managerComments // Use new comments if provided
           );
         }
       } catch (emailError) {
@@ -859,7 +859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/leaves/:id/approve", requireAuth, async (req, res) => {
+  app.patch("/api/leaves/:id/approve", allowRoles('Manager', 'HR', 'Admin'), async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;
@@ -968,7 +968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/leaves/:id/reject", requireAuth, async (req, res) => {
+  app.patch("/api/leaves/:id/reject", allowRoles('Manager', 'HR', 'Admin'), async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;
@@ -1011,8 +1011,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Leave Type Routes
-  app.get("/api/leave-types", async (req, res) => {
+  // Leave Type Routes - All authenticated users can view
+  app.get("/api/leave-types", requireAuth, async (req, res) => {
     try {
       const types = await storage.getAllLeaveTypes();
       res.json(types);
@@ -1021,8 +1021,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Holiday Routes
-  app.get("/api/holidays", async (req, res) => {
+  // Holiday Routes - All authenticated users can view
+  app.get("/api/holidays", requireAuth, async (req, res) => {
     try {
       const holidays = await storage.getAllHolidays();
       res.json(holidays);
@@ -1031,7 +1031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/holidays", async (req, res) => {
+  app.post("/api/holidays", requireHROrAdmin, async (req, res) => {
     try {
       const validated = insertHolidaySchema.parse(req.body);
       const holiday = await storage.createHoliday(validated);
@@ -1041,7 +1041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/holidays/:id", async (req, res) => {
+  app.patch("/api/holidays/:id", requireHROrAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const holiday = await storage.updateHoliday(id, req.body);
@@ -1054,7 +1054,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/holidays/:id", async (req, res) => {
+  app.delete("/api/holidays/:id", requireHROrAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const deleted = await storage.deleteHoliday(id);
@@ -1071,18 +1071,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reimbursements", async (req, res) => {
     try {
       const userId = req.session.userId;
+      const userRole = req.session.userRole;
       if (!userId) {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
-      const reimbursements = await storage.getReimbursementsByUser(userId);
+      // Managers, HR, Accountants, and Admins can view all reimbursements; employees view their own
+      const canViewAll = ['Admin', 'HR', 'Manager', 'Accountant'].includes(userRole?.accessLevel || '');
+      
+      let reimbursements;
+      if (canViewAll) {
+        // For elevated roles, get all reimbursements (TODO: filter by team/department for managers)
+        reimbursements = await storage.getAllReimbursements();
+      } else {
+        // For employees, only show their own
+        reimbursements = await storage.getReimbursementsByUser(userId);
+      }
+      
       res.json(reimbursements);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch reimbursements" });
     }
   });
 
-  app.post("/api/reimbursements", async (req, res) => {
+  app.post("/api/reimbursements", requireAuth, async (req, res) => {
     try {
       const validated = insertReimbursementSchema.parse(req.body);
       const reimbursement = await storage.createReimbursement(validated);
@@ -1114,7 +1126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/reimbursements/:id/approve-manager", async (req, res) => {
+  app.patch("/api/reimbursements/:id/approve-manager", allowRoles('Manager', 'HR', 'Admin'), async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;
@@ -1152,7 +1164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/reimbursements/:id/approve-accountant", async (req, res) => {
+  app.patch("/api/reimbursements/:id/approve-accountant", allowRoles('Accountant', 'Admin'), async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;
@@ -1190,7 +1202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/reimbursements/:id/reject", async (req, res) => {
+  app.patch("/api/reimbursements/:id/reject", allowRoles('Manager', 'HR', 'Accountant', 'Admin'), async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;
@@ -1213,8 +1225,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Reimbursement Type Routes
-  app.get("/api/reimbursement-types", async (req, res) => {
+  // Reimbursement Type Routes - All authenticated users can view
+  app.get("/api/reimbursement-types", requireAuth, async (req, res) => {
     try {
       const types = await storage.getAllReimbursementTypes();
       res.json(types);
@@ -1223,22 +1235,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Payroll Routes
-  app.get("/api/payroll", async (req, res) => {
+  // Payroll Routes - Employees can view own, HR/Accountant/Admin can manage
+  app.get("/api/payroll", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId;
+      const userRole = req.session.userRole;
       if (!userId) {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
-      const payrolls = await storage.getPayrollsByUser(userId);
+      // HR, Accountants, and Admins can view all payrolls; Managers and employees view their own only
+      const canViewAll = ['Admin', 'HR', 'Accountant'].includes(userRole?.accessLevel || '');
+      
+      let payrolls;
+      if (canViewAll) {
+        // For elevated roles, get all payrolls
+        payrolls = await storage.getAllPayrolls();
+      } else {
+        // For employees, only show their own
+        payrolls = await storage.getPayrollsByUser(userId);
+      }
+      
       res.json(payrolls);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch payroll" });
     }
   });
 
-  app.post("/api/payroll", async (req, res) => {
+  app.post("/api/payroll", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
     try {
       const validated = insertPayrollSchema.parse(req.body);
       const payroll = await storage.createPayroll(validated);
@@ -1248,7 +1272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/payroll/:id/approve", async (req, res) => {
+  app.patch("/api/payroll/:id/approve", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
     try {
       const { id } = req.params;
       const approverId = 'admin-user'; // In production, get from session
@@ -1264,8 +1288,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Company Routes
-  app.get("/api/company", async (req, res) => {
+  // Company Routes - All authenticated users can view
+  app.get("/api/company", requireAuth, async (req, res) => {
     try {
       const companies = await storage.getAllCompanies();
       // Return first company or default MIDCAI data
@@ -1282,23 +1306,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Department Routes
-  app.get("/api/departments", async (req, res) => {
+  // Department Routes - All authenticated users can view
+  app.get("/api/departments", requireAuth, async (req, res) => {
     try {
       const departments = await storage.getAllDepartments();
       res.json(departments);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch departments" });
-    }
-  });
-
-  // User Role Routes (Existing)
-  app.get("/api/roles", async (req, res) => {
-    try {
-      const roles = await storage.getAllUserRoles();
-      res.json(roles);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch roles" });
     }
   });
 
