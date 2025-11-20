@@ -221,6 +221,68 @@ Payroll View          |  ✓    | ✓   |         |     ✓      |  Own
   - Elevated roles see all records (future: filtered by team/department)
 - Admin role automatically inherits all permissions
 
+### Organizational Hierarchy System
+
+The HRMS implements a hierarchical employee-manager relationship system with validation rules to ensure proper organizational structure.
+
+**Hierarchy Levels:**
+
+Roles are assigned numeric hierarchy levels (lower numbers = higher authority):
+1. **Super Admin** (Level 1) - Highest authority
+2. **Manager** (Level 2) - Team leadership
+3. **HR Admin** (Level 3) - HR operations
+4. **Accountant** (Level 4) - Finance operations
+5. **Employee** (Level 5) - Individual contributors
+
+**Manager-Employee Relationships:**
+
+- Each employee can have one assigned manager (stored in `user_profiles.manager_id`)
+- Manager assignment enforces hierarchy validation: **manager.level < employee.level**
+- Example valid assignments:
+  - Manager (level 2) can manage HR Admin (level 3), Accountant (level 4), or Employee (level 5)
+  - HR Admin (level 3) can manage Accountant (level 4) or Employee (level 5)
+  - Employee (level 5) cannot manage anyone
+- Example invalid assignments:
+  - Employee (level 5) cannot manage Manager (level 2) - violates hierarchy
+  - HR Admin (level 3) cannot manage Manager (level 2) - violates hierarchy
+
+**Hierarchy API Endpoints:**
+
+1. **POST `/api/employees/:employeeId/assign-manager`**
+   - Assigns a manager to an employee
+   - Permissions: HR Admin, Super Admin only
+   - Request body: `{ "managerId": "uuid" }`
+   - Validates hierarchy: throws error if manager.level >= employee.level
+   - Returns: Updated employee profile
+
+2. **GET `/api/employees/:managerId/subordinates`**
+   - Lists all direct subordinates of a manager
+   - Permissions: 
+     - Managers can view their own subordinates only
+     - HR Admin and Super Admin can view any manager's subordinates
+   - Returns: Array of employee profiles (without passwords)
+
+3. **GET `/api/hierarchy/tree`**
+   - Returns complete organizational hierarchy as a tree structure
+   - Permissions: All authenticated users
+   - Returns: Nested tree with employees grouped under their managers
+   - Root nodes: Employees with no assigned manager
+
+**Validation Rules:**
+
+- Manager assignment requires both employee and manager to have roles assigned
+- Manager must have a lower hierarchy level (numerically) than the employee
+- Validation occurs at the storage layer before database update
+- Clear error messages indicate which hierarchy rule was violated
+
+**Use Cases:**
+
+- **Organizational Structure**: Build reporting chains and team structures
+- **Leave Approvals**: Employees submit leave requests to their assigned manager
+- **Reimbursement Approvals**: Manager approval required before accountant review
+- **Team Management**: Managers can view and manage their subordinates' data
+- **Reporting**: Generate org charts and hierarchy visualizations
+
 ## External Dependencies
 
 ### Third-Party Services
