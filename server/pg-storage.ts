@@ -625,4 +625,114 @@ export class PostgresStorage implements IStorage {
   async getAllEmployees(): Promise<UserProfile[]> {
     return await db.select().from(userProfiles);
   }
+
+  // Hierarchy Operations
+  async assignManager(employeeId: string, managerId: string): Promise<UserProfile | undefined> {
+    // Get employee and their role
+    const employee = await db.query.userProfiles.findFirst({
+      where: eq(userProfiles.id, employeeId),
+      with: {
+        role: true,
+      },
+    });
+
+    if (!employee) {
+      throw new Error('Employee not found');
+    }
+
+    if (!employee.roleId) {
+      throw new Error('Employee does not have a role assigned');
+    }
+
+    // Get manager and their role
+    const manager = await db.query.userProfiles.findFirst({
+      where: eq(userProfiles.id, managerId),
+      with: {
+        role: true,
+      },
+    });
+
+    if (!manager) {
+      throw new Error('Manager not found');
+    }
+
+    if (!manager.roleId) {
+      throw new Error('Manager does not have a role assigned');
+    }
+
+    // Validate hierarchy: manager.level must be < employee.level
+    const employeeRole = await db.query.userRoles.findFirst({
+      where: eq(userRoles.id, employee.roleId),
+    });
+
+    const managerRole = await db.query.userRoles.findFirst({
+      where: eq(userRoles.id, manager.roleId),
+    });
+
+    if (!employeeRole || !managerRole) {
+      throw new Error('Role information not found');
+    }
+
+    if (managerRole.level >= employeeRole.level) {
+      throw new Error(
+        `Invalid hierarchy: Manager role (${managerRole.roleName}, level ${managerRole.level}) must have a lower level than employee role (${employeeRole.roleName}, level ${employeeRole.level})`
+      );
+    }
+
+    // Assign manager
+    const [updated] = await db
+      .update(userProfiles)
+      .set({ managerId })
+      .where(eq(userProfiles.id, employeeId))
+      .returning();
+
+    return updated;
+  }
+
+  async getSubordinates(managerId: string): Promise<UserProfile[]> {
+    return await db.select().from(userProfiles).where(eq(userProfiles.managerId, managerId));
+  }
+
+  async getHierarchyTree(): Promise<any[]> {
+    // Get all employees with their roles
+    const allEmployees = await db.query.userProfiles.findMany({
+      with: {
+        role: true,
+      },
+    });
+
+    // Build a map of employees
+    const employeeMap = new Map<string, any>();
+    allEmployees.forEach((emp) => {
+      employeeMap.set(emp.id, {
+        id: emp.id,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        email: emp.email,
+        roleName: emp.role?.roleName || 'Unknown',
+        roleLevel: emp.role?.level || 999,
+        managerId: emp.managerId,
+        subordinates: [],
+      });
+    });
+
+    // Build hierarchy tree
+    const rootNodes: any[] = [];
+    employeeMap.forEach((employee) => {
+      if (employee.managerId) {
+        const manager = employeeMap.get(employee.managerId);
+        if (manager) {
+          manager.subordinates.push(employee);
+        } else {
+          // Manager not found in system, treat as root
+          rootNodes.push(employee);
+        }
+      } else {
+        // No manager, this is a root node
+        rootNodes.push(employee);
+      }
+    });
+
+    return rootNodes;
+  }
 }

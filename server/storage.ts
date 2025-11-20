@@ -115,6 +115,11 @@ export interface IStorage {
     pendingReimbursements: number;
     pendingRegularizations: number;
   }>;
+
+  // Hierarchy Operations
+  assignManager(employeeId: string, managerId: string): Promise<UserProfile | undefined>;
+  getSubordinates(managerId: string): Promise<UserProfile[]>;
+  getHierarchyTree(): Promise<any[]>;
 }
 
 /* Keeping MemStorage for reference, but now using PostgreSQL */
