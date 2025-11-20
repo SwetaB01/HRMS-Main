@@ -20,6 +20,7 @@ export const userRoles = pgTable("user_roles", {
   roleDescription: text("role_description"),
   accessType: text("access_type").notNull(),
   accessLevel: text("access_level").notNull(),
+  level: integer("level").notNull(), // 1=Super Admin, 2=Manager, 3=HR Admin, 4=Accountant, 5=Employee
 });
 
 export const insertUserRoleSchema = createInsertSchema(userRoles).omit({ id: true });

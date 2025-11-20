@@ -59,37 +59,42 @@ export async function seedDatabase() {
     // Now delete all existing roles
     await db.delete(userRoles);
 
-    // Seed standardized roles with proper access levels
+    // Seed standardized roles with proper access levels and hierarchy
     const rolesData = [
       { 
         roleName: 'Super Admin', 
         roleDescription: 'Full system access with all permissions', 
         accessType: 'Full Access', 
-        accessLevel: 'Admin' 
-      },
-      { 
-        roleName: 'HR Admin', 
-        roleDescription: 'HR department with employee, payroll, and leave management access', 
-        accessType: 'Limited Access', 
-        accessLevel: 'HR' 
+        accessLevel: 'Admin',
+        level: 1 // Highest hierarchy level
       },
       { 
         roleName: 'Manager', 
         roleDescription: 'Team manager with approval and team management permissions', 
         accessType: 'Limited Access', 
-        accessLevel: 'Manager' 
+        accessLevel: 'Manager',
+        level: 2
+      },
+      { 
+        roleName: 'HR Admin', 
+        roleDescription: 'HR department with employee, payroll, and leave management access', 
+        accessType: 'Limited Access', 
+        accessLevel: 'HR',
+        level: 3
       },
       { 
         roleName: 'Accountant', 
         roleDescription: 'Finance department with payroll and reimbursement access', 
         accessType: 'Limited Access', 
-        accessLevel: 'Accountant' 
+        accessLevel: 'Accountant',
+        level: 4
       },
       { 
         roleName: 'Employee', 
         roleDescription: 'Regular employee with access to own data only', 
         accessType: 'Limited Access', 
-        accessLevel: 'Employee' 
+        accessLevel: 'Employee',
+        level: 5 // Lowest hierarchy level
       },
     ];
 
@@ -134,34 +139,40 @@ export async function seedDatabase() {
       await db.update(userProfiles).set({ roleId: adminRole.id }).where(eq(userProfiles.id, adminUser.id));
     }
 
-    // Create default leave types
-    await db.insert(leaveTypes).values([
-      {
-        name: 'Casual Leave',
-        maxConsecutiveDays: 5,
-        isCarryForward: false,
-      },
-      {
-        name: 'Sick Leave',
-        maxConsecutiveDays: 10,
-        isCarryForward: false,
-      },
-      {
-        name: 'Earned Leave',
-        maxConsecutiveDays: 15,
-        isCarryForward: true,
-      },
-    ]);
+    // Create default leave types if they don't exist
+    const existingLeaveTypes = await db.select().from(leaveTypes);
+    if (existingLeaveTypes.length === 0) {
+      await db.insert(leaveTypes).values([
+        {
+          name: 'Casual Leave',
+          maxConsecutiveDays: 5,
+          isCarryForward: false,
+        },
+        {
+          name: 'Sick Leave',
+          maxConsecutiveDays: 10,
+          isCarryForward: false,
+        },
+        {
+          name: 'Earned Leave',
+          maxConsecutiveDays: 15,
+          isCarryForward: true,
+        },
+      ]);
+    }
 
-    // Create default reimbursement types
-    await db.insert(reimbursementTypes).values([
-      { name: 'Travel' },
-      { name: 'Meals & Entertainment' },
-      { name: 'Office Supplies' },
-      { name: 'Accommodation' },
-      { name: 'Phone & Internet' },
-      { name: 'Others' },
-    ]);
+    // Create default reimbursement types if they don't exist
+    const existingReimbTypes = await db.select().from(reimbursementTypes);
+    if (existingReimbTypes.length === 0) {
+      await db.insert(reimbursementTypes).values([
+        { name: 'Travel' },
+        { name: 'Meals & Entertainment' },
+        { name: 'Office Supplies' },
+        { name: 'Accommodation' },
+        { name: 'Phone & Internet' },
+        { name: 'Others' },
+      ]);
+    }
   }
 
   // Create a second employee with administration role (outside userAlreadyExists check)
