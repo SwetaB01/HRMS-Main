@@ -628,13 +628,13 @@ export class PostgresStorage implements IStorage {
 
   // Hierarchy Operations
   async assignManager(employeeId: string, managerId: string): Promise<UserProfile | undefined> {
-    // Get employee and their role
-    const employee = await db.query.userProfiles.findFirst({
-      where: eq(userProfiles.id, employeeId),
-      with: {
-        role: true,
-      },
-    });
+    // Prevent self-assignment
+    if (employeeId === managerId) {
+      throw new Error('An employee cannot be assigned as their own manager');
+    }
+
+    // Get employee
+    const [employee] = await db.select().from(userProfiles).where(eq(userProfiles.id, employeeId));
 
     if (!employee) {
       throw new Error('Employee not found');
@@ -644,13 +644,8 @@ export class PostgresStorage implements IStorage {
       throw new Error('Employee does not have a role assigned');
     }
 
-    // Get manager and their role
-    const manager = await db.query.userProfiles.findFirst({
-      where: eq(userProfiles.id, managerId),
-      with: {
-        role: true,
-      },
-    });
+    // Get manager
+    const [manager] = await db.select().from(userProfiles).where(eq(userProfiles.id, managerId));
 
     if (!manager) {
       throw new Error('Manager not found');
@@ -660,19 +655,15 @@ export class PostgresStorage implements IStorage {
       throw new Error('Manager does not have a role assigned');
     }
 
-    // Validate hierarchy: manager.level must be < employee.level
-    const employeeRole = await db.query.userRoles.findFirst({
-      where: eq(userRoles.id, employee.roleId),
-    });
-
-    const managerRole = await db.query.userRoles.findFirst({
-      where: eq(userRoles.id, manager.roleId),
-    });
+    // Get employee and manager roles
+    const [employeeRole] = await db.select().from(userRoles).where(eq(userRoles.id, employee.roleId));
+    const [managerRole] = await db.select().from(userRoles).where(eq(userRoles.id, manager.roleId));
 
     if (!employeeRole || !managerRole) {
       throw new Error('Role information not found');
     }
 
+    // Validate hierarchy: manager.level must be < employee.level
     if (managerRole.level >= employeeRole.level) {
       throw new Error(
         `Invalid hierarchy: Manager role (${managerRole.roleName}, level ${managerRole.level}) must have a lower level than employee role (${employeeRole.roleName}, level ${employeeRole.level})`
@@ -694,23 +685,24 @@ export class PostgresStorage implements IStorage {
   }
 
   async getHierarchyTree(): Promise<any[]> {
-    // Get all employees with their roles
-    const allEmployees = await db.query.userProfiles.findMany({
-      with: {
-        role: true,
-      },
-    });
+    // Get all employees
+    const allEmployees = await db.select().from(userProfiles);
+    
+    // Get all roles for mapping
+    const allRoles = await db.select().from(userRoles);
+    const roleMap = new Map(allRoles.map(role => [role.id, role]));
 
-    // Build a map of employees
+    // Build a map of employees with their role information
     const employeeMap = new Map<string, any>();
     allEmployees.forEach((emp) => {
+      const role = emp.roleId ? roleMap.get(emp.roleId) : null;
       employeeMap.set(emp.id, {
         id: emp.id,
         firstName: emp.firstName,
         lastName: emp.lastName,
         email: emp.email,
-        roleName: emp.role?.roleName || 'Unknown',
-        roleLevel: emp.role?.level || 999,
+        roleName: role?.roleName || 'Unknown',
+        roleLevel: role?.level || 999,
         managerId: emp.managerId,
         subordinates: [],
       });
