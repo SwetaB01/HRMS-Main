@@ -372,6 +372,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Hierarchy Routes
+  // Assign manager to employee - HR and Admin only
+  app.post("/api/employees/:employeeId/assign-manager", requireHROrAdmin, async (req, res) => {
+    try {
+      const { employeeId } = req.params;
+      const { managerId } = req.body;
+
+      if (!managerId) {
+        return res.status(400).json({ message: "Manager ID is required" });
+      }
+
+      const updatedEmployee = await storage.assignManager(employeeId, managerId);
+      
+      if (!updatedEmployee) {
+        return res.status(404).json({ message: "Failed to assign manager" });
+      }
+
+      // Remove passwordHash before returning
+      const { passwordHash, ...employeeData } = updatedEmployee;
+      res.json({
+        message: "Manager assigned successfully",
+        employee: employeeData
+      });
+    } catch (error: any) {
+      console.error('Manager assignment error:', error);
+      res.status(400).json({ message: error.message || "Failed to assign manager" });
+    }
+  });
+
+  // Get subordinates of a manager - Managers can see their subordinates, HR/Admin can see all
+  app.get("/api/employees/:managerId/subordinates", allowRoles('Admin', 'HR', 'Manager'), async (req, res) => {
+    try {
+      const { managerId } = req.params;
+      const currentUserId = req.session.userId!;
+      let userRole = req.session.userRole;
+
+      // Fallback: fetch role from storage if not in session
+      if (!userRole) {
+        const user = await storage.getUserProfile(currentUserId);
+        if (user?.roleId) {
+          const role = await storage.getUserRole(user.roleId);
+          if (role) {
+            userRole = {
+              accessLevel: role.accessLevel,
+              roleName: role.roleName
+            };
+            req.session.userRole = userRole;
+          }
+        }
+      }
+
+      // Managers can only view their own subordinates, HR/Admin can view any manager's subordinates
+      if (userRole?.accessLevel === 'Manager' && managerId !== currentUserId) {
+        return res.status(403).json({ message: "You can only view your own subordinates" });
+      }
+
+      const subordinates = await storage.getSubordinates(managerId);
+      
+      // Remove passwordHash from all subordinates
+      const sanitizedSubordinates = subordinates.map(({ passwordHash, ...employee }) => employee);
+      
+      res.json(sanitizedSubordinates);
+    } catch (error: any) {
+      console.error('Get subordinates error:', error);
+      res.status(500).json({ message: error.message || "Failed to fetch subordinates" });
+    }
+  });
+
+  // Get full hierarchy tree - All authenticated users can view
+  app.get("/api/hierarchy/tree", requireAuth, async (req, res) => {
+    try {
+      const hierarchyTree = await storage.getHierarchyTree();
+      res.json(hierarchyTree);
+    } catch (error: any) {
+      console.error('Hierarchy tree error:', error);
+      res.status(500).json({ message: error.message || "Failed to fetch hierarchy tree" });
+    }
+  });
+
   // Dashboard Routes - All authenticated users can view
   app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
