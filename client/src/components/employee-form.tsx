@@ -121,6 +121,23 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
       // Convert insuranceOpted to boolean
       submitData.insuranceOpted = data.insuranceOpted === "yes";
 
+      // Convert empty date strings to null to avoid database errors
+      if (submitData.birthdate === "") submitData.birthdate = null;
+      if (submitData.joiningDate === "") submitData.joiningDate = null;
+
+      // Convert empty strings to null for optional fields
+      if (submitData.phone === "") submitData.phone = null;
+      if (submitData.gender === "") submitData.gender = null;
+      if (submitData.street === "") submitData.street = null;
+      if (submitData.city === "") submitData.city = null;
+      if (submitData.state === "") submitData.state = null;
+      if (submitData.country === "") submitData.country = null;
+      if (submitData.userType === "") submitData.userType = null;
+      if (submitData.bankAccount === "") submitData.bankAccount = null;
+      if (submitData.middleName === "") submitData.middleName = null;
+      if (submitData.departmentId === "") submitData.departmentId = null;
+      if (submitData.roleId === "") submitData.roleId = null;
+
       const endpoint = employee
         ? `/api/employees/${employee.id}`
         : '/api/employees';
