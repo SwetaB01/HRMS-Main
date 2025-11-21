@@ -109,7 +109,7 @@ export default function Employees() {
             Manage employee profiles and access
           </p>
         </div>
-        {canManageEmployees ? (
+        {canManageEmployees && (
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-employee">
@@ -117,34 +117,25 @@ export default function Employees() {
                 Add Employee
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Employee</DialogTitle>
-              <DialogDescription>
-                Create a new employee profile
-              </DialogDescription>
-            </DialogHeader>
-            <EmployeeForm
-              onSuccess={() => {
-                setIsAddDialogOpen(false);
-                queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
-                toast({
-                  title: "Success",
-                  description: "Employee created successfully",
-                });
-              }}
-            />
-          </DialogContent>
-        </Dialog>
-        ) : (
-          <Button 
-            disabled 
-            data-testid="button-add-employee-disabled"
-            title="Access Denied: Only Super Admin role can create employee records"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Employee
-          </Button>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add New Employee</DialogTitle>
+                <DialogDescription>
+                  Create a new employee profile
+                </DialogDescription>
+              </DialogHeader>
+              <EmployeeForm
+                onSuccess={() => {
+                  setIsAddDialogOpen(false);
+                  queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+                  toast({
+                    title: "Success",
+                    description: "Employee created successfully",
+                  });
+                }}
+              />
+            </DialogContent>
+          </Dialog>
         )}
       </div>
 
