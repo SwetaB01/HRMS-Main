@@ -53,8 +53,8 @@ export default function Employees() {
     queryKey: ["/api/auth/me"],
   });
 
-  // Check if current user can create employees (Super Admin only)
-  const canCreateEmployee = currentUser && currentUser.accessLevel === 'Admin';
+  // Check if current user can create/edit employees (Super Admin only)
+  const canManageEmployees = currentUser && currentUser.accessLevel === 'Admin';
 
   const getRoleName = (roleId: string | null) => {
     if (!roleId || !roles) return null;
@@ -109,7 +109,7 @@ export default function Employees() {
             Manage employee profiles and access
           </p>
         </div>
-        {canCreateEmployee ? (
+        {canManageEmployees ? (
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-employee">
@@ -241,6 +241,8 @@ export default function Employees() {
                         size="icon"
                         data-testid={`button-edit-${employee.id}`}
                         onClick={() => setEditingEmployee(employee)}
+                        disabled={!canManageEmployees}
+                        title={!canManageEmployees ? "Only Super Admin can edit employees" : ""}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -249,7 +251,8 @@ export default function Employees() {
                         size="icon"
                         data-testid={`button-delete-${employee.id}`}
                         onClick={() => handleDelete(employee)}
-                        disabled={deleteMutation.isPending}
+                        disabled={deleteMutation.isPending || !canManageEmployees}
+                        title={!canManageEmployees ? "Only Super Admin can delete employees" : ""}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
