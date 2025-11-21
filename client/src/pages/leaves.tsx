@@ -63,13 +63,13 @@ export default function Leaves() {
 
   const pendingLeaves = useMemo(() => {
     if (!pendingApprovals || !currentUser) return [];
-    
+
     // Only show pending approvals to managers, HR, and admins
     const allowedRoles = ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'];
     if (!allowedRoles.includes(currentUser.roleName)) {
       return [];
     }
-    
+
     return pendingApprovals;
   }, [pendingApprovals, currentUser]);
 
@@ -209,65 +209,7 @@ export default function Leaves() {
         )}
       </div>
 
-      {/* Pending Approvals Section for Managers/HR only */}
-      {currentUser && ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'].includes(currentUser.roleName) && pendingLeaves.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending Leave Approvals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Leave Type</TableHead>
-                    <TableHead>From Date</TableHead>
-                    <TableHead>To Date</TableHead>
-                    <TableHead>Days</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingLeaves.map((leave) => (
-                    <TableRow key={leave.id}>
-                      <TableCell>{leave.employeeName}</TableCell>
-                      <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
-                      <TableCell>{leave.fromDate}</TableCell>
-                      <TableCell>{leave.toDate}</TableCell>
-                      <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
-                      <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
-                      <TableCell className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedLeave(leave);
-                            setIsApproveDialogOpen(true);
-                          }}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" /> Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => {
-                            setSelectedLeave(leave);
-                            setIsRejectDialogOpen(true);
-                          }}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" /> Reject
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card></Card>
 
       <Card>
         <CardHeader>
