@@ -272,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/employees", requireHROrAdmin, async (req, res) => {
+  app.post("/api/employees", requireAdmin, async (req, res) => {
     try {
       // Validate request body with schema (it expects password field)
       const validated = insertUserProfileSchema.parse(req.body);

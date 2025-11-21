@@ -53,12 +53,8 @@ export default function Employees() {
     queryKey: ["/api/auth/me"],
   });
 
-  // Check if current user can create employees (HR, Manager, or Admin access levels)
-  const canCreateEmployee = currentUser && (
-    currentUser.accessLevel === 'Admin' ||
-    currentUser.accessLevel === 'HR' ||
-    currentUser.accessLevel === 'Manager'
-  );
+  // Check if current user can create employees (Super Admin only)
+  const canCreateEmployee = currentUser && currentUser.accessLevel === 'Admin';
 
   const getRoleName = (roleId: string | null) => {
     if (!roleId || !roles) return null;
@@ -144,7 +140,7 @@ export default function Employees() {
           <Button 
             disabled 
             data-testid="button-add-employee-disabled"
-            title="Access Denied: Only HR, Manager, and Admin roles can create employee records"
+            title="Access Denied: Only Super Admin role can create employee records"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Employee
