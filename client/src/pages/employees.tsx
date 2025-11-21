@@ -58,7 +58,7 @@ export default function Employees() {
   });
 
   // Check if current user can create/edit employees (Super Admin only)
-  const canManageEmployees = currentUser?.accessLevel === 'Admin';
+  const canManageEmployees = !isLoadingUser && currentUser?.accessLevel === 'Admin';
 
   const getRoleName = (roleId: string | null) => {
     if (!roleId || !roles) return null;
@@ -238,26 +238,27 @@ export default function Employees() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-testid={`button-edit-${employee.id}`}
-                        onClick={() => setEditingEmployee(employee)}
-                        disabled={!canManageEmployees}
-                        title={!canManageEmployees ? "Only Super Admin can edit employees" : ""}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-testid={`button-delete-${employee.id}`}
-                        onClick={() => handleDelete(employee)}
-                        disabled={deleteMutation.isPending || !canManageEmployees}
-                        title={!canManageEmployees ? "Only Super Admin can delete employees" : ""}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canManageEmployees && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-testid={`button-edit-${employee.id}`}
+                            onClick={() => setEditingEmployee(employee)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-testid={`button-delete-${employee.id}`}
+                            onClick={() => handleDelete(employee)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
