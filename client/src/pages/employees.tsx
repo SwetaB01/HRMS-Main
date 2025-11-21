@@ -40,7 +40,7 @@ export default function Employees() {
     queryKey: ["/api/roles"],
   });
 
-  const { data: currentUser } = useQuery<{
+  const { data: currentUser, isLoading: isLoadingUser } = useQuery<{
     id: string;
     firstName: string;
     lastName: string;
@@ -54,7 +54,7 @@ export default function Employees() {
   });
 
   // Check if current user can create/edit employees (Super Admin only)
-  const canManageEmployees = currentUser && currentUser.accessLevel === 'Admin';
+  const canManageEmployees = currentUser?.accessLevel === 'Admin';
 
   const getRoleName = (roleId: string | null) => {
     if (!roleId || !roles) return null;
