@@ -70,8 +70,9 @@ export default function Approvals() {
   }
 
   const getEmployeeName = (userId: string) => {
-    const employee = employees?.find(emp => emp.id === userId);
-    return employee ? `${employee.firstName} ${employee.lastName}` : userId;
+    if (!employees) return 'Loading...';
+    const employee = employees.find(emp => emp.id === userId);
+    return employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee';
   };
 
   const handleApprove = async () => {
@@ -87,16 +88,19 @@ export default function Approvals() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to approve leave');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to approve leave');
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
       setIsApproveDialogOpen(false);
       setComments("");
       setSelectedLeave(null);
-    } catch (error) {
+      alert('Leave approved successfully!');
+    } catch (error: any) {
       console.error('Failed to approve leave:', error);
-      alert('Failed to approve leave. Please try again.');
+      alert(error.message || 'Failed to approve leave. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -118,16 +122,19 @@ export default function Approvals() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to reject leave');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to reject leave');
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
       setIsRejectDialogOpen(false);
       setComments("");
       setSelectedLeave(null);
-    } catch (error) {
+      alert('Leave rejected successfully!');
+    } catch (error: any) {
       console.error('Failed to reject leave:', error);
-      alert('Failed to reject leave. Please try again.');
+      alert(error.message || 'Failed to reject leave. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
