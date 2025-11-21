@@ -111,6 +111,27 @@ export default function Employees() {
       .includes(searchTerm.toLowerCase())
   );
 
+  // If user is not Super Admin, show access denied message
+  if (!canManageEmployees) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold mb-1">Employee Management</h1>
+            <p className="text-muted-foreground">
+              Manage employee profiles and access
+            </p>
+          </div>
+        </div>
+        <div className="border rounded-md p-8 text-center">
+          <p className="text-muted-foreground text-lg">
+            Access Denied. Only Super Admin users can view employee management.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -120,34 +141,32 @@ export default function Employees() {
             Manage employee profiles and access
           </p>
         </div>
-        {canManageEmployees && (
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-employee">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Employee
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add New Employee</DialogTitle>
-                <DialogDescription>
-                  Create a new employee profile
-                </DialogDescription>
-              </DialogHeader>
-              <EmployeeForm
-                onSuccess={() => {
-                  setIsAddDialogOpen(false);
-                  queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
-                  toast({
-                    title: "Success",
-                    description: "Employee created successfully",
-                  });
-                }}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-add-employee">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Employee
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add New Employee</DialogTitle>
+              <DialogDescription>
+                Create a new employee profile
+              </DialogDescription>
+            </DialogHeader>
+            <EmployeeForm
+              onSuccess={() => {
+                setIsAddDialogOpen(false);
+                queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+                toast({
+                  title: "Success",
+                  description: "Employee created successfully",
+                });
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex items-center gap-4">
@@ -238,27 +257,23 @@ export default function Employees() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {canManageEmployees && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            data-testid={`button-edit-${employee.id}`}
-                            onClick={() => setEditingEmployee(employee)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            data-testid={`button-delete-${employee.id}`}
-                            onClick={() => handleDelete(employee)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        data-testid={`button-edit-${employee.id}`}
+                        onClick={() => setEditingEmployee(employee)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        data-testid={`button-delete-${employee.id}`}
+                        onClick={() => handleDelete(employee)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
