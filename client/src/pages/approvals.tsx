@@ -45,6 +45,16 @@ export default function Approvals() {
     queryKey: ["/api/employees"],
   });
 
+  const { data: leaveTypes } = useQuery<any[]>({
+    queryKey: ["/api/leave-types"],
+  });
+
+  const getLeaveTypeName = (leaveTypeId: string | null) => {
+    if (!leaveTypeId || !leaveTypes) return leaveTypeId;
+    const leaveType = leaveTypes.find(lt => lt.id === leaveTypeId);
+    return leaveType ? leaveType.name : leaveTypeId;
+  };
+
   // Check if user has permission to view approvals
   const hasApprovalAccess = currentUser && ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'].includes(currentUser.roleName);
 
@@ -182,7 +192,7 @@ export default function Approvals() {
                   pendingLeaves.map((leave) => (
                     <TableRow key={leave.id}>
                       <TableCell>{getEmployeeName(leave.userId)}</TableCell>
-                      <TableCell>{leave.leaveTypeId}</TableCell>
+                      <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
                       <TableCell>{leave.fromDate}</TableCell>
                       <TableCell>{leave.toDate}</TableCell>
                       <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>

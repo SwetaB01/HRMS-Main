@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserProfile, UserRole } from "@shared/schema";
+import { UserProfile, UserRole, Department } from "@shared/schema";
 import { EmployeeForm } from "@/components/employee-form";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -38,6 +38,10 @@ export default function Employees() {
 
   const { data: roles } = useQuery<UserRole[]>({
     queryKey: ["/api/roles"],
+  });
+
+  const { data: departments } = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
   });
 
   const { data: currentUser, isLoading: isLoadingUser } = useQuery<{
@@ -61,6 +65,13 @@ export default function Employees() {
     const role = roles.find(r => r.id === roleId);
     return role ? `${role.roleName} (${role.accessLevel})` : roleId;
   };
+
+  const getDepartmentName = (departmentId: string | null) => {
+    if (!departmentId || !departments) return null;
+    const department = departments.find(d => d.id === departmentId);
+    return department ? department.departmentName : departmentId;
+  };
+
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -209,7 +220,7 @@ export default function Employees() {
                     {employee.firstName} {employee.lastName}
                   </TableCell>
                   <TableCell>{employee.email}</TableCell>
-                  <TableCell>{employee.departmentId || "-"}</TableCell>
+                  <TableCell>{getDepartmentName(employee.departmentId) || "-"}</TableCell>
                   <TableCell>
                     {employee.roleId ? (
                       <Badge variant="outline">{getRoleName(employee.roleId)}</Badge>

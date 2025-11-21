@@ -46,6 +46,16 @@ export default function Leaves() {
     queryKey: ["/api/auth/me"],
   });
 
+  const { data: leaveTypes } = useQuery<any[]>({
+    queryKey: ["/api/leave-types"],
+  });
+
+  const getLeaveTypeName = (leaveTypeId: string | null) => {
+    if (!leaveTypeId || !leaveTypes) return leaveTypeId;
+    const leaveType = leaveTypes.find(lt => lt.id === leaveTypeId);
+    return leaveType ? leaveType.name : leaveTypeId;
+  };
+
   const pendingLeaves = useMemo(() => {
     if (!leaves || !currentUser) return [];
     
@@ -167,7 +177,7 @@ export default function Leaves() {
             <Card key={balance.id}>
               <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  {balance.leaveTypeId}
+                  {getLeaveTypeName(balance.leaveTypeId)}
                 </CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -219,7 +229,7 @@ export default function Leaves() {
                   {pendingLeaves.map((leave) => (
                     <TableRow key={leave.id}>
                       <TableCell>{leave.employeeName}</TableCell>
-                      <TableCell>{leave.leaveTypeId}</TableCell>
+                      <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
                       <TableCell>{leave.fromDate}</TableCell>
                       <TableCell>{leave.toDate}</TableCell>
                       <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
@@ -291,7 +301,7 @@ export default function Leaves() {
                 ) : leaves && leaves.length > 0 ? (
                   leaves.map((leave) => (
                     <TableRow key={leave.id} data-testid={`row-leave-${leave.id}`}>
-                      <TableCell>{leave.leaveTypeId}</TableCell>
+                      <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
                       <TableCell>{leave.fromDate}</TableCell>
                       <TableCell>{leave.toDate}</TableCell>
                       <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
