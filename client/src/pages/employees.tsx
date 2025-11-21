@@ -69,7 +69,7 @@ export default function Employees() {
   const getDepartmentName = (departmentId: string | null) => {
     if (!departmentId || !departments) return null;
     const department = departments.find(d => d.id === departmentId);
-    return department ? department.departmentName : departmentId;
+    return department ? department.name : departmentId;
   };
 
 
