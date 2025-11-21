@@ -148,7 +148,7 @@ export default function Approvals() {
         <div>
           <h1 className="text-3xl font-semibold mb-1">Approvals</h1>
           <p className="text-muted-foreground">
-            Review and approve pending leave applications
+            Review and approve pending leave applications from your department
           </p>
         </div>
       </div>

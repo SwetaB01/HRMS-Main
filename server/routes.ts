@@ -801,12 +801,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/approvals/leaves", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
+      const currentUser = await storage.getUserProfile(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
 
       // Get all leaves where the current user is the manager
       const allLeaves = await storage.getAllLeaves();
-      const pendingLeaves = allLeaves.filter(leave => 
+      let pendingLeaves = allLeaves.filter(leave => 
         leave.managerId === userId && leave.status === 'Open'
       );
+
+      // Also include leaves from employees in the same department if user is a manager
+      if (currentUser.roleId) {
+        const role = await storage.getUserRole(currentUser.roleId);
+        if (role && ['Manager', 'Admin', 'HR'].includes(role.accessLevel) && currentUser.departmentId) {
+          const departmentLeaves = allLeaves.filter(leave => {
+            if (leave.status !== 'Open') return false;
+            if (leave.managerId === userId) return true; // Already included above
+            
+            // Check if the leave applicant is in the same department
+            const allEmployees = storage.getAllUserProfiles();
+            return allEmployees.then(employees => {
+              const applicant = employees.find(emp => emp.id === leave.userId);
+              return applicant?.departmentId === currentUser.departmentId;
+            });
+          });
+          
+          // Merge and deduplicate
+          const allPendingLeaves = [...pendingLeaves];
+          for (const deptLeave of allLeaves) {
+            if (deptLeave.status === 'Open') {
+              const allEmployees = await storage.getAllUserProfiles();
+              const applicant = allEmployees.find(emp => emp.id === deptLeave.userId);
+              if (applicant?.departmentId === currentUser.departmentId && 
+                  !allPendingLeaves.find(l => l.id === deptLeave.id)) {
+                allPendingLeaves.push(deptLeave);
+              }
+            }
+          }
+          pendingLeaves = allPendingLeaves;
+        }
+      }
 
       res.json(pendingLeaves);
     } catch (error) {
@@ -834,14 +871,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId!;
       const { userId: _, ...leaveData } = req.body; // Remove userId from body
 
-      // Get employee's manager from their profile
+      // Get employee's department and find department manager
       const employee = await storage.getUserProfile(userId);
-      const managerId = employee?.managerId || null;
+      let managerId = null;
+
+      if (employee?.departmentId) {
+        // Find the manager of the employee's department
+        const allEmployees = await storage.getAllUserProfiles();
+        const departmentManager = allEmployees.find(emp => 
+          emp.departmentId === employee.departmentId && 
+          emp.roleId && 
+          emp.id !== userId // Don't assign to self
+        );
+
+        // Get the role to check if they're a manager
+        if (departmentManager?.roleId) {
+          const role = await storage.getUserRole(departmentManager.roleId);
+          if (role && ['Manager', 'Admin', 'HR'].includes(role.accessLevel)) {
+            managerId = departmentManager.id;
+          }
+        }
+      }
+
+      // Fallback to direct manager if no department manager found
+      if (!managerId) {
+        managerId = employee?.managerId || null;
+      }
 
       const validated = insertLeaveSchema.parse({
         ...leaveData,
         userId, // Use authenticated user's ID
-        managerId, // Set manager from employee's profile
+        managerId, // Set manager from department or direct manager
       });
       const leave = await storage.createLeave(validated);
 
