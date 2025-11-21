@@ -58,15 +58,14 @@ export default function Leaves() {
 
   const { data: pendingApprovals } = useQuery<Leave[]>({
     queryKey: ["/api/approvals/leaves"],
-    enabled: !!currentUser && ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'].includes(currentUser.roleName),
+    enabled: !!currentUser && currentUser.accessLevel === 'Manager',
   });
 
   const pendingLeaves = useMemo(() => {
     if (!pendingApprovals || !currentUser) return [];
 
-    // Only show pending approvals to managers, HR, and admins
-    const allowedRoles = ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'];
-    if (!allowedRoles.includes(currentUser.roleName)) {
+    // Only show pending approvals to managers
+    if (currentUser.accessLevel !== 'Manager') {
       return [];
     }
 

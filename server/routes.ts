@@ -798,52 +798,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/approvals/leaves", requireAuth, async (req, res) => {
+  app.get("/api/approvals/leaves", allowRoles('Manager'), async (req, res) => {
     try {
       const userId = req.session.userId!;
       const currentUser = await storage.getUserProfile(userId);
       
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
+      if (!currentUser || !currentUser.departmentId) {
+        return res.json([]);
       }
 
-      // Get all leaves where the current user is the manager
+      // Get all leaves from employees in the manager's department
       const allLeaves = await storage.getAllLeaves();
-      let pendingLeaves = allLeaves.filter(leave => 
-        leave.managerId === userId && leave.status === 'Open'
-      );
-
-      // Also include leaves from employees in the same department if user is a manager
-      if (currentUser.roleId) {
-        const role = await storage.getUserRole(currentUser.roleId);
-        if (role && ['Manager', 'Admin', 'HR'].includes(role.accessLevel) && currentUser.departmentId) {
-          const departmentLeaves = allLeaves.filter(leave => {
-            if (leave.status !== 'Open') return false;
-            if (leave.managerId === userId) return true; // Already included above
-            
-            // Check if the leave applicant is in the same department
-            const allEmployees = storage.getAllUserProfiles();
-            return allEmployees.then(employees => {
-              const applicant = employees.find(emp => emp.id === leave.userId);
-              return applicant?.departmentId === currentUser.departmentId;
-            });
-          });
-          
-          // Merge and deduplicate
-          const allPendingLeaves = [...pendingLeaves];
-          for (const deptLeave of allLeaves) {
-            if (deptLeave.status === 'Open') {
-              const allEmployees = await storage.getAllUserProfiles();
-              const applicant = allEmployees.find(emp => emp.id === deptLeave.userId);
-              if (applicant?.departmentId === currentUser.departmentId && 
-                  !allPendingLeaves.find(l => l.id === deptLeave.id)) {
-                allPendingLeaves.push(deptLeave);
-              }
-            }
-          }
-          pendingLeaves = allPendingLeaves;
-        }
-      }
+      const allEmployees = await storage.getAllUserProfiles();
+      
+      const pendingLeaves = allLeaves.filter(leave => {
+        if (leave.status !== 'Open') return false;
+        
+        // Find the employee who applied for leave
+        const applicant = allEmployees.find(emp => emp.id === leave.userId);
+        
+        // Include if applicant is in the same department as the manager
+        return applicant?.departmentId === currentUser.departmentId;
+      });
 
       res.json(pendingLeaves);
     } catch (error) {
@@ -1044,7 +1020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/leaves/:id/approve", allowRoles('Manager', 'HR', 'Admin'), async (req, res) => {
+  app.patch("/api/leaves/:id/approve", allowRoles('Manager'), async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;
@@ -1153,7 +1129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/leaves/:id/reject", allowRoles('Manager', 'HR', 'Admin'), async (req, res) => {
+  app.patch("/api/leaves/:id/reject", allowRoles('Manager'), async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;

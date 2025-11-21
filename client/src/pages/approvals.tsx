@@ -38,7 +38,7 @@ export default function Approvals() {
 
   const { data: pendingLeaves, isLoading } = useQuery<Leave[]>({
     queryKey: ["/api/approvals/leaves"],
-    enabled: !!currentUser && ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'].includes(currentUser?.roleName),
+    enabled: !!currentUser && currentUser?.accessLevel === 'Manager',
   });
 
   const { data: employees } = useQuery<any[]>({
@@ -55,8 +55,8 @@ export default function Approvals() {
     return leaveType ? leaveType.name : leaveTypeId;
   };
 
-  // Check if user has permission to view approvals
-  const hasApprovalAccess = currentUser && ['Manager', 'HR Executive', 'Tech Lead', 'Project Manager', 'Admin'].includes(currentUser.roleName);
+  // Check if user has permission to view approvals - only managers
+  const hasApprovalAccess = currentUser && currentUser.accessLevel === 'Manager';
 
   if (!hasApprovalAccess) {
     return (
