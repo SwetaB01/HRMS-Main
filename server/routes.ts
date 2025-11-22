@@ -803,8 +803,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId!;
       const currentUser = await storage.getUserProfile(userId);
       
-      if (!currentUser || !currentUser.departmentId) {
-        console.log('Manager has no department assigned');
+      console.log('Manager viewing approvals:', {
+        managerId: userId,
+        managerName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Unknown',
+        departmentId: currentUser?.departmentId,
+        roleId: currentUser?.roleId
+      });
+      
+      if (!currentUser) {
+        console.log('Manager profile not found');
         return res.json([]);
       }
 
@@ -812,13 +819,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allLeaves = await storage.getAllLeaves();
       const allEmployees = await storage.getAllUserProfiles();
       
-      console.log('Total leaves:', allLeaves.length);
-      console.log('Manager department:', currentUser.departmentId);
+      console.log('Total leaves in system:', allLeaves.length);
+      console.log('Total employees in system:', allEmployees.length);
+      console.log('Manager department:', currentUser.departmentId || 'NOT ASSIGNED');
+      
+      // Log all leaves for debugging
+      allLeaves.forEach(leave => {
+        const applicant = allEmployees.find(emp => emp.id === leave.userId);
+        console.log('Leave entry:', {
+          leaveId: leave.id,
+          userId: leave.userId,
+          applicantName: applicant ? `${applicant.firstName} ${applicant.lastName}` : 'Unknown',
+          applicantDept: applicant?.departmentId || 'NOT ASSIGNED',
+          status: leave.status,
+          fromDate: leave.fromDate,
+          toDate: leave.toDate,
+          managerId: leave.managerId
+        });
+      });
       
       // Filter leaves for employees in the manager's department with 'Open' status
       const pendingLeaves = allLeaves.filter(leave => {
         // Only show 'Open' status leaves
         if (leave.status !== 'Open') {
+          console.log(`Skipping leave ${leave.id} - status is ${leave.status}`);
           return false;
         }
         
@@ -830,6 +854,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return false;
         }
         
+        // If manager has no department, show all 'Open' leaves they are assigned to
+        if (!currentUser.departmentId) {
+          const isAssignedManager = leave.managerId === userId;
+          if (isAssignedManager) {
+            console.log('Manager has no department, showing leave assigned directly to them:', {
+              leaveId: leave.id,
+              applicantName: `${applicant.firstName} ${applicant.lastName}`
+            });
+          }
+          return isAssignedManager;
+        }
+        
         // Include if applicant is in the same department as the manager
         const inSameDepartment = applicant.departmentId === currentUser.departmentId;
         
@@ -839,12 +875,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             applicantName: `${applicant.firstName} ${applicant.lastName}`,
             department: applicant.departmentId
           });
+        } else {
+          console.log('Leave not in manager department:', {
+            leaveId: leave.id,
+            applicantDept: applicant.departmentId,
+            managerDept: currentUser.departmentId
+          });
         }
         
         return inSameDepartment;
       });
 
-      console.log('Pending leaves for manager:', pendingLeaves.length);
+      console.log('Pending leaves returned to manager:', pendingLeaves.length);
       res.json(pendingLeaves);
     } catch (error) {
       console.error('Failed to fetch pending leaves:', error);
