@@ -55,25 +55,28 @@ export default function Leaves() {
     mutationFn: async (leaveId: string) => {
       setIsSubmitting(true);
       const response = await fetch(`/api/leaves/${leaveId}/approve`, {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ comments }),
       });
       if (!response.ok) {
-        throw new Error("Failed to approve leave");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to approve leave");
       }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
       setIsApproveDialogOpen(false);
       setComments("");
       setSelectedLeave(null);
       setIsSubmitting(false);
     },
-    onError: () => {
+    onError: (error: any) => {
       setIsSubmitting(false);
-      // Handle error appropriately, e.g., show a toast
+      alert(error.message || "Failed to approve leave");
     },
   });
 
@@ -81,25 +84,28 @@ export default function Leaves() {
     mutationFn: async (leaveId: string) => {
       setIsSubmitting(true);
       const response = await fetch(`/api/leaves/${leaveId}/reject`, {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ comments }),
       });
       if (!response.ok) {
-        throw new Error("Failed to reject leave");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to reject leave");
       }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
       setIsRejectDialogOpen(false);
       setComments("");
       setSelectedLeave(null);
       setIsSubmitting(false);
     },
-    onError: () => {
+    onError: (error: any) => {
       setIsSubmitting(false);
-      // Handle error appropriately, e.g., show a toast
+      alert(error.message || "Failed to reject leave");
     },
   });
 
