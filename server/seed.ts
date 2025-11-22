@@ -313,5 +313,61 @@ export async function seedDatabase() {
   }
 
 
+  // Seed National Holidays for 2025-2026
+  const holidaysData = [
+    // 2025 Holidays
+    { name: "New Year's Day", fromDate: "2025-01-01", toDate: "2025-01-01", totalHolidays: 1 },
+    { name: "Makar Sankranti", fromDate: "2025-01-14", toDate: "2025-01-14", totalHolidays: 1 },
+    { name: "Republic Day", fromDate: "2025-01-26", toDate: "2025-01-26", totalHolidays: 1 },
+    { name: "Maha Shivaratri", fromDate: "2025-02-26", toDate: "2025-02-26", totalHolidays: 1 },
+    { name: "Holi", fromDate: "2025-03-14", toDate: "2025-03-14", totalHolidays: 1 },
+    { name: "Good Friday", fromDate: "2025-04-18", toDate: "2025-04-18", totalHolidays: 1 },
+    { name: "Mahavir Jayanti", fromDate: "2025-04-10", toDate: "2025-04-10", totalHolidays: 1 },
+    { name: "Ram Navami", fromDate: "2025-04-06", toDate: "2025-04-06", totalHolidays: 1 },
+    { name: "Eid ul-Fitr", fromDate: "2025-03-31", toDate: "2025-03-31", totalHolidays: 1 },
+    { name: "Buddha Purnima", fromDate: "2025-05-12", toDate: "2025-05-12", totalHolidays: 1 },
+    { name: "Eid ul-Adha", fromDate: "2025-06-07", toDate: "2025-06-07", totalHolidays: 1 },
+    { name: "Muharram", fromDate: "2025-07-06", toDate: "2025-07-06", totalHolidays: 1 },
+    { name: "Independence Day", fromDate: "2025-08-15", toDate: "2025-08-15", totalHolidays: 1 },
+    { name: "Janmashtami", fromDate: "2025-08-16", toDate: "2025-08-16", totalHolidays: 1 },
+    { name: "Ganesh Chaturthi", fromDate: "2025-08-27", toDate: "2025-08-27", totalHolidays: 1 },
+    { name: "Milad un-Nabi", fromDate: "2025-09-05", toDate: "2025-09-05", totalHolidays: 1 },
+    { name: "Gandhi Jayanti", fromDate: "2025-10-02", toDate: "2025-10-02", totalHolidays: 1 },
+    { name: "Dussehra", fromDate: "2025-10-02", toDate: "2025-10-02", totalHolidays: 1 },
+    { name: "Diwali", fromDate: "2025-10-20", toDate: "2025-10-21", totalHolidays: 2 },
+    { name: "Guru Nanak Jayanti", fromDate: "2025-11-05", toDate: "2025-11-05", totalHolidays: 1 },
+    { name: "Christmas", fromDate: "2025-12-25", toDate: "2025-12-25", totalHolidays: 1 },
+    
+    // 2026 Holidays
+    { name: "New Year's Day", fromDate: "2026-01-01", toDate: "2026-01-01", totalHolidays: 1 },
+    { name: "Makar Sankranti", fromDate: "2026-01-14", toDate: "2026-01-14", totalHolidays: 1 },
+    { name: "Republic Day", fromDate: "2026-01-26", toDate: "2026-01-26", totalHolidays: 1 },
+    { name: "Maha Shivaratri", fromDate: "2026-02-17", toDate: "2026-02-17", totalHolidays: 1 },
+    { name: "Holi", fromDate: "2026-03-04", toDate: "2026-03-04", totalHolidays: 1 },
+    { name: "Eid ul-Fitr", fromDate: "2026-03-20", toDate: "2026-03-20", totalHolidays: 1 },
+    { name: "Ram Navami", fromDate: "2026-03-27", toDate: "2026-03-27", totalHolidays: 1 },
+    { name: "Mahavir Jayanti", fromDate: "2026-03-30", toDate: "2026-03-30", totalHolidays: 1 },
+    { name: "Good Friday", fromDate: "2026-04-03", toDate: "2026-04-03", totalHolidays: 1 },
+    { name: "Buddha Purnima", fromDate: "2026-05-01", toDate: "2026-05-01", totalHolidays: 1 },
+    { name: "Eid ul-Adha", fromDate: "2026-05-28", toDate: "2026-05-28", totalHolidays: 1 },
+    { name: "Muharram", fromDate: "2026-06-26", toDate: "2026-06-26", totalHolidays: 1 },
+    { name: "Independence Day", fromDate: "2026-08-15", toDate: "2026-08-15", totalHolidays: 1 },
+    { name: "Janmashtami", fromDate: "2026-08-05", toDate: "2026-08-05", totalHolidays: 1 },
+    { name: "Ganesh Chaturthi", fromDate: "2026-08-16", toDate: "2026-08-16", totalHolidays: 1 },
+    { name: "Milad un-Nabi", fromDate: "2026-08-25", toDate: "2026-08-25", totalHolidays: 1 },
+    { name: "Gandhi Jayanti", fromDate: "2026-10-02", toDate: "2026-10-02", totalHolidays: 1 },
+    { name: "Dussehra", fromDate: "2026-09-21", toDate: "2026-09-21", totalHolidays: 1 },
+    { name: "Diwali", fromDate: "2026-10-09", toDate: "2026-10-10", totalHolidays: 2 },
+    { name: "Guru Nanak Jayanti", fromDate: "2026-11-24", toDate: "2026-11-24", totalHolidays: 1 },
+    { name: "Christmas", fromDate: "2026-12-25", toDate: "2026-12-25", totalHolidays: 1 },
+  ];
+
+  for (const holiday of holidaysData) {
+    await storage.createHoliday({
+      ...holiday,
+      companyId: null,
+    });
+  }
+
   console.log('Database seeding completed!');
 }
