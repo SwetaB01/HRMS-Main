@@ -104,7 +104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Get user role information
+      // Get user role information and update session
       let roleName = 'Employee';
       let accessLevel = 'Employee';
       if (user.roleId) {
@@ -112,6 +112,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (role) {
           roleName = role.roleName;
           accessLevel = role.accessLevel;
+          // Update session with latest role info
+          req.session.userRole = {
+            accessLevel: role.accessLevel,
+            roleName: role.roleName
+          };
         }
       }
 
@@ -124,6 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         roleName,
         accessLevel,
         roleId: user.roleId,
+        departmentId: user.departmentId,
       };
 
       res.json(userResponse);
@@ -823,26 +829,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Total employees in system:', allEmployees.length);
       console.log('Manager department:', currentUser.departmentId || 'NOT ASSIGNED');
       
-      // Log all leaves for debugging
-      allLeaves.forEach(leave => {
-        const applicant = allEmployees.find(emp => emp.id === leave.userId);
-        console.log('Leave entry:', {
-          leaveId: leave.id,
-          userId: leave.userId,
-          applicantName: applicant ? `${applicant.firstName} ${applicant.lastName}` : 'Unknown',
-          applicantDept: applicant?.departmentId || 'NOT ASSIGNED',
-          status: leave.status,
-          fromDate: leave.fromDate,
-          toDate: leave.toDate,
-          managerId: leave.managerId
-        });
-      });
-      
       // Filter leaves for employees in the manager's department with 'Open' status
+      // OR leaves that are directly assigned to this manager
       const pendingLeaves = allLeaves.filter(leave => {
         // Only show 'Open' status leaves
         if (leave.status !== 'Open') {
-          console.log(`Skipping leave ${leave.id} - status is ${leave.status}`);
           return false;
         }
         
@@ -854,36 +845,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return false;
         }
         
-        // If manager has no department, show all 'Open' leaves they are assigned to
-        if (!currentUser.departmentId) {
-          const isAssignedManager = leave.managerId === userId;
-          if (isAssignedManager) {
-            console.log('Manager has no department, showing leave assigned directly to them:', {
-              leaveId: leave.id,
-              applicantName: `${applicant.firstName} ${applicant.lastName}`
-            });
-          }
-          return isAssignedManager;
-        }
+        // Show leaves that are assigned to this manager OR in the same department
+        const isAssignedToManager = leave.managerId === userId;
+        const inSameDepartment = currentUser.departmentId && applicant.departmentId === currentUser.departmentId;
         
-        // Include if applicant is in the same department as the manager
-        const inSameDepartment = applicant.departmentId === currentUser.departmentId;
+        const shouldShow = isAssignedToManager || inSameDepartment;
         
-        if (inSameDepartment) {
-          console.log('Found leave from same department:', {
+        if (shouldShow) {
+          console.log('Including leave:', {
             leaveId: leave.id,
             applicantName: `${applicant.firstName} ${applicant.lastName}`,
-            department: applicant.departmentId
-          });
-        } else {
-          console.log('Leave not in manager department:', {
-            leaveId: leave.id,
+            reason: isAssignedToManager ? 'Assigned to manager' : 'Same department',
             applicantDept: applicant.departmentId,
-            managerDept: currentUser.departmentId
+            managerDept: currentUser.departmentId,
+            assignedManagerId: leave.managerId
           });
         }
         
-        return inSameDepartment;
+        return shouldShow;
       });
 
       console.log('Pending leaves returned to manager:', pendingLeaves.length);
