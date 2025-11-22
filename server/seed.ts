@@ -2,6 +2,7 @@ import { db } from './db';
 import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, departments } from '@shared/schema';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
+import { storage } from './storage';
 
 export async function seedDatabase() {
   console.log('Seeding database...');
