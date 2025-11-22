@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -22,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, Check, X } from "lucide-react";
 import { Leave } from "@shared/schema";
 
 export default function Approvals() {
@@ -77,7 +76,7 @@ export default function Approvals() {
 
   const handleApprove = async () => {
     if (!selectedLeave) return;
-    
+
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/leaves/${selectedLeave.id}/approve`, {
@@ -206,32 +205,7 @@ export default function Approvals() {
                       <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
                       <TableCell>{getStatusBadge(leave.status)}</TableCell>
                       <TableCell>
-                        {leave.status === 'Open' && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedLeave(leave);
-                                setIsApproveDialogOpen(true);
-                              }}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedLeave(leave);
-                                setIsRejectDialogOpen(true);
-                              }}
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Reject
-                            </Button>
-                          </div>
-                        )}
+                        <span className="text-sm text-muted-foreground">View Only</span>
                       </TableCell>
                     </TableRow>
                   ))
