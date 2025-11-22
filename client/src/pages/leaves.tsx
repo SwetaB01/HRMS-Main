@@ -252,7 +252,7 @@ export default function Leaves() {
                       <TableCell>{getStatusBadge(leave.status)}</TableCell>
                       <TableCell>{leave.managerComments || '-'}</TableCell>
                       <TableCell>
-                        {currentUser?.accessLevel === 'Manager' && leave.status === 'Open' && leave.userId !== currentUser.id ? (
+                        {currentUser?.accessLevel === 'Manager' && leave.status === 'Open' && leave.userId !== (currentUser.id || currentUser.userId) ? (
                           <div className="flex gap-2">
                             <Button
                               size="sm"
