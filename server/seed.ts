@@ -209,7 +209,7 @@ export async function seedDatabase() {
     }
   }
 
-  // Create a Manager role user if not exists
+  // Create a Manager role user if not exists, or update existing one with department
   const [managerRole] = await db.select().from(userRoles).where(eq(userRoles.roleName, 'Manager'));
   const managerUserExists = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
   if (managerRole && !managerUserExists) {
@@ -230,9 +230,15 @@ export async function seedDatabase() {
       departmentId: itDept ? itDept.id : null,
       managerId: null,
     });
+  } else if (managerUserExists && itDept && !managerUserExists.departmentId) {
+    // Update existing manager with department
+    console.log('Updating existing manager user with department...');
+    await db.update(userProfiles)
+      .set({ departmentId: itDept.id })
+      .where(eq(userProfiles.id, managerUserExists.id));
   }
 
-  // Create a regular Employee user if not exists
+  // Create a regular Employee user if not exists, or update existing one with department
   const [employeeRole] = await db.select().from(userRoles).where(eq(userRoles.roleName, 'Employee'));
   const employeeUserExists = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'employee') });
   if (employeeRole && !employeeUserExists) {
@@ -254,6 +260,16 @@ export async function seedDatabase() {
       departmentId: itDept ? itDept.id : null,
       managerId: managerUserData ? managerUserData.id : null,
     });
+  } else if (employeeUserExists && itDept && !employeeUserExists.departmentId) {
+    // Update existing employee with department
+    console.log('Updating existing employee user with department...');
+    const managerUserData = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
+    await db.update(userProfiles)
+      .set({ 
+        departmentId: itDept.id,
+        managerId: managerUserData ? managerUserData.id : employeeUserExists.managerId
+      })
+      .where(eq(userProfiles.id, employeeUserExists.id));
   }
 
   // Create additional test employees if they don't exist
@@ -283,6 +299,16 @@ export async function seedDatabase() {
         departmentId: itDept ? itDept.id : null,
         managerId: managerUserData ? managerUserData.id : null,
       });
+    } else if (existingEmployee && itDept && !existingEmployee.departmentId) {
+      // Update existing employee with department
+      console.log(`Updating existing employee ${emp.username} with department...`);
+      const managerUserData = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
+      await db.update(userProfiles)
+        .set({ 
+          departmentId: itDept.id,
+          managerId: managerUserData ? managerUserData.id : existingEmployee.managerId
+        })
+        .where(eq(userProfiles.id, existingEmployee.id));
     }
   }
 
