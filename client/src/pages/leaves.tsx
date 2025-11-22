@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -24,11 +24,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Leave, LeaveLedger } from "@shared/schema";
 import { LeaveForm } from "@/components/leave-form";
+import { Textarea } from "@/components/ui/textarea";
+import { useMutation } from "@tanstack/react-query";
 
 export default function Leaves() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedLeave, setSelectedLeave] = useState<Leave | null>(null);
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [comments, setComments] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: leaves, isLoading } = useQuery<Leave[]>({
+  const { data: leaves, isLoading, refetch } = useQuery<Leave[]>({
     queryKey: ["/api/leaves"],
   });
 
@@ -43,6 +50,71 @@ export default function Leaves() {
   const { data: leaveTypes } = useQuery<any[]>({
     queryKey: ["/api/leave-types"],
   });
+
+  const approveLeaveMutation = useMutation({
+    mutationFn: async (leaveId: string) => {
+      setIsSubmitting(true);
+      const response = await fetch(`/api/leaves/${leaveId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comments }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to approve leave");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
+      setIsApproveDialogOpen(false);
+      setComments("");
+      setSelectedLeave(null);
+      setIsSubmitting(false);
+    },
+    onError: () => {
+      setIsSubmitting(false);
+      // Handle error appropriately, e.g., show a toast
+    },
+  });
+
+  const rejectLeaveMutation = useMutation({
+    mutationFn: async (leaveId: string) => {
+      setIsSubmitting(true);
+      const response = await fetch(`/api/leaves/${leaveId}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comments }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to reject leave");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
+      setIsRejectDialogOpen(false);
+      setComments("");
+      setSelectedLeave(null);
+      setIsSubmitting(false);
+    },
+    onError: () => {
+      setIsSubmitting(false);
+      // Handle error appropriately, e.g., show a toast
+    },
+  });
+
+  const handleApprove = () => {
+    if (selectedLeave) {
+      approveLeaveMutation.mutate(selectedLeave.id);
+    }
+  };
+
+  const handleReject = () => {
+    if (selectedLeave && comments.trim()) {
+      rejectLeaveMutation.mutate(selectedLeave.id);
+    }
+  };
+
 
   const getLeaveTypeName = (leaveTypeId: string | null) => {
     if (!leaveTypeId || !leaveTypes) return leaveTypeId;
@@ -85,6 +157,7 @@ export default function Leaves() {
             <LeaveForm
               onSuccess={() => {
                 setIsAddDialogOpen(false);
+                refetch(); // Refetch leaves after a successful submission
               }}
             />
           </DialogContent>
@@ -143,6 +216,7 @@ export default function Leaves() {
                   <TableHead>Reason</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Manager Comments</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -157,6 +231,7 @@ export default function Leaves() {
                         <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       </TableRow>
                     ))}
                   </>
@@ -170,11 +245,41 @@ export default function Leaves() {
                       <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
                       <TableCell>{getStatusBadge(leave.status)}</TableCell>
                       <TableCell>{leave.managerComments || '-'}</TableCell>
+                      <TableCell>
+                        {currentUser?.accessLevel === 'Manager' && leave.status === 'Open' && leave.userId !== currentUser.id ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedLeave(leave);
+                                setIsApproveDialogOpen(true);
+                              }}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedLeave(leave);
+                                setIsRejectDialogOpen(true);
+                              }}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">View Only</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No leave applications found
                     </TableCell>
                   </TableRow>
@@ -184,6 +289,81 @@ export default function Leaves() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Approve Dialog */}
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Leave Application</DialogTitle>
+            <DialogDescription>
+              Add optional comments for the employee
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Comments (optional)"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+            />
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsApproveDialogOpen(false);
+                  setComments("");
+                  setSelectedLeave(null);
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleApprove} disabled={isSubmitting}>
+                {isSubmitting ? "Approving..." : "Approve"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Leave Application</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejection
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Reason for rejection *"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              required
+            />
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsRejectDialogOpen(false);
+                  setComments("");
+                  setSelectedLeave(null);
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleReject}
+                disabled={isSubmitting || !comments.trim()}
+              >
+                {isSubmitting ? "Rejecting..." : "Reject"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
