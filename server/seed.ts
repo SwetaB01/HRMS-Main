@@ -28,6 +28,8 @@ export async function seedDatabase() {
 
   // Seed departments if not exist
   const existingDepts = await db.select().from(departments);
+  let itDept: any = null; // Declare itDept here
+
   if (existingDepts.length === 0) {
     console.log('Seeding departments...');
     const deptData = [
@@ -42,7 +44,13 @@ export async function seedDatabase() {
     for (const dept of deptData) {
       await db.insert(departments).values(dept);
     }
+    itDept = deptData.find(d => d.id === 'it'); // Assign itDept here
+  } else {
+    // If departments already exist, find the 'it' department
+    const [foundItDept] = await db.select().from(departments).where(eq(departments.id, 'it'));
+    itDept = foundItDept;
   }
+
 
   // Check if roles need to be reset
   const existingRoles = await db.select().from(userRoles);
@@ -132,6 +140,7 @@ export async function seedDatabase() {
         language: 'English',
         timezone: 'Asia/Kolkata',
         insuranceOpted: false,
+        departmentId: itDept ? itDept.id : null, // Assign departmentId if itDept exists
       });
     } else if (!adminUser.roleId) {
       // Update existing admin user to have Admin role
@@ -195,9 +204,88 @@ export async function seedDatabase() {
         timezone: 'Asia/Kolkata',
         insuranceOpted: false,
         joiningDate: new Date().toISOString().split('T')[0],
+        departmentId: itDept ? itDept.id : null, // Assign departmentId if itDept exists
       });
     }
   }
+
+  // Create a Manager role user if not exists
+  const [managerRole] = await db.select().from(userRoles).where(eq(userRoles.roleName, 'Manager'));
+  const managerUserExists = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
+  if (managerRole && !managerUserExists) {
+    console.log('Creating manager user...');
+    const hashedPassword = await bcrypt.hash('manager123', 10);
+    await db.insert(userProfiles).values({
+      roleId: managerRole.id,
+      firstName: 'John',
+      lastName: 'Manager',
+      email: 'manager@midcai.com',
+      username: 'manager',
+      passwordHash: hashedPassword,
+      status: 'Active',
+      userType: 'Employee',
+      language: 'English',
+      timezone: 'Asia/Kolkata',
+      joiningDate: '2023-01-15',
+      departmentId: itDept ? itDept.id : null,
+      managerId: null,
+    });
+  }
+
+  // Create a regular Employee user if not exists
+  const [employeeRole] = await db.select().from(userRoles).where(eq(userRoles.roleName, 'Employee'));
+  const employeeUserExists = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'employee') });
+  if (employeeRole && !employeeUserExists) {
+    console.log('Creating employee user...');
+    const hashedPassword = await bcrypt.hash('employee123', 10);
+    const managerUserData = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
+    await db.insert(userProfiles).values({
+      roleId: employeeRole.id,
+      firstName: 'Jane',
+      lastName: 'Employee',
+      email: 'employee@midcai.com',
+      username: 'employee',
+      passwordHash: hashedPassword,
+      status: 'Active',
+      userType: 'Employee',
+      language: 'English',
+      timezone: 'Asia/Kolkata',
+      joiningDate: '2023-03-01',
+      departmentId: itDept ? itDept.id : null,
+      managerId: managerUserData ? managerUserData.id : null,
+    });
+  }
+
+  // Create additional test employees if they don't exist
+  const additionalEmployees = [
+    { firstName: 'Bob', lastName: 'Smith', username: 'bsmith', email: 'bob.smith@midcai.com', joiningDate: '2023-04-15' },
+    { firstName: 'Alice', lastName: 'Johnson', username: 'ajohnson', email: 'alice.johnson@midcai.com', joiningDate: '2023-05-01' },
+  ];
+
+  for (const emp of additionalEmployees) {
+    const existingEmployee = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, emp.username) });
+    if (employeeRole && !existingEmployee) {
+      console.log(`Creating employee ${emp.username}...`);
+      const hashedPassword = await bcrypt.hash('employee123', 10);
+      const managerUserData = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
+      await db.insert(userProfiles).values({
+        roleId: employeeRole.id,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        email: emp.email,
+        username: emp.username,
+        passwordHash: hashedPassword,
+        status: 'Active',
+        userType: 'Employee',
+        language: 'English',
+        timezone: 'Asia/Kolkata',
+        joiningDate: emp.joiningDate,
+        departmentId: itDept ? itDept.id : null,
+        managerId: managerUserData ? managerUserData.id : null,
+      });
+    }
+  }
+
 
   console.log('Database seeding completed!');
 }
