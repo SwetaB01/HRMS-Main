@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Plus, Calendar, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -22,17 +22,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { Leave, LeaveLedger } from "@shared/schema";
 import { LeaveForm } from "@/components/leave-form";
 
 export default function Leaves() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
-  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-  const [selectedLeave, setSelectedLeave] = useState<Leave | null>(null);
-  const [comments, setComments] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: leaves, isLoading } = useQuery<Leave[]>({
     queryKey: ["/api/leaves"],
@@ -54,83 +48,6 @@ export default function Leaves() {
     if (!leaveTypeId || !leaveTypes) return leaveTypeId;
     const leaveType = leaveTypes.find(lt => lt.id === leaveTypeId);
     return leaveType ? leaveType.name : leaveTypeId;
-  };
-
-  const { data: pendingApprovals } = useQuery<Leave[]>({
-    queryKey: ["/api/approvals/leaves"],
-    enabled: !!currentUser && currentUser.accessLevel === 'Manager',
-  });
-
-  const pendingLeaves = useMemo(() => {
-    if (!pendingApprovals || !currentUser) return [];
-
-    // Only show pending approvals to managers
-    if (currentUser.accessLevel !== 'Manager') {
-      return [];
-    }
-
-    return pendingApprovals;
-  }, [pendingApprovals, currentUser]);
-
-  const handleApprove = async () => {
-    if (!selectedLeave) return;
-
-    setIsSubmitting(true);
-    try {
-      const response = await fetch(`/api/leaves/${selectedLeave.id}/approve`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ comments }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to approve leave');
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
-      setIsApproveDialogOpen(false);
-      setComments("");
-      setSelectedLeave(null);
-    } catch (error) {
-      console.error('Failed to approve leave:', error);
-      alert('Failed to approve leave. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!selectedLeave || !comments.trim()) {
-      alert('Please provide a reason for rejection');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const response = await fetch(`/api/leaves/${selectedLeave.id}/reject`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ comments }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reject leave');
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
-      setIsRejectDialogOpen(false);
-      setComments("");
-      setSelectedLeave(null);
-    } catch (error) {
-      console.error('Failed to reject leave:', error);
-      alert('Failed to reject leave. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -267,81 +184,6 @@ export default function Leaves() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Approve Dialog */}
-      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Approve Leave Application</DialogTitle>
-            <DialogDescription>
-              Add optional comments for the employee
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              placeholder="Comments (optional)"
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-            />
-            <div className="flex justify-end gap-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsApproveDialogOpen(false);
-                  setComments("");
-                  setSelectedLeave(null);
-                }}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleApprove} disabled={isSubmitting}>
-                {isSubmitting ? "Approving..." : "Approve"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reject Dialog */}
-      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Leave Application</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejection
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              placeholder="Reason for rejection *"
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              required
-            />
-            <div className="flex justify-end gap-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsRejectDialogOpen(false);
-                  setComments("");
-                  setSelectedLeave(null);
-                }}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleReject}
-                disabled={isSubmitting || !comments.trim()}
-              >
-                {isSubmitting ? "Rejecting..." : "Reject"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
