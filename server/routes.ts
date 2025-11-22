@@ -852,26 +852,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let managerId = null;
 
       if (employee?.departmentId) {
-        // Find the manager of the employee's department
+        // Find all managers in the employee's department
         const allEmployees = await storage.getAllUserProfiles();
-        const departmentManager = allEmployees.find(emp => 
-          emp.departmentId === employee.departmentId && 
-          emp.roleId && 
-          emp.id !== userId // Don't assign to self
-        );
-
-        // Get the role to check if they're a manager
-        if (departmentManager?.roleId) {
-          const role = await storage.getUserRole(departmentManager.roleId);
-          if (role && ['Manager', 'Admin', 'HR'].includes(role.accessLevel)) {
-            managerId = departmentManager.id;
+        
+        for (const emp of allEmployees) {
+          if (emp.departmentId === employee.departmentId && 
+              emp.roleId && 
+              emp.id !== userId) {
+            
+            // Check if this employee has a Manager role
+            const role = await storage.getUserRole(emp.roleId);
+            if (role && role.accessLevel === 'Manager') {
+              managerId = emp.id;
+              break; // Found a manager in the same department
+            }
           }
         }
       }
 
       // Fallback to direct manager if no department manager found
-      if (!managerId) {
-        managerId = employee?.managerId || null;
+      if (!managerId && employee?.managerId) {
+        managerId = employee.managerId;
       }
 
       const validated = insertLeaveSchema.parse({
