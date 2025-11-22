@@ -804,23 +804,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentUser = await storage.getUserProfile(userId);
       
       if (!currentUser || !currentUser.departmentId) {
+        console.log('Manager has no department assigned');
         return res.json([]);
       }
 
-      // Get all leaves from employees in the manager's department
+      // Get all leaves and employees
       const allLeaves = await storage.getAllLeaves();
       const allEmployees = await storage.getAllUserProfiles();
       
+      console.log('Total leaves:', allLeaves.length);
+      console.log('Manager department:', currentUser.departmentId);
+      
+      // Filter leaves for employees in the manager's department with 'Open' status
       const pendingLeaves = allLeaves.filter(leave => {
-        if (leave.status !== 'Open') return false;
+        // Only show 'Open' status leaves
+        if (leave.status !== 'Open') {
+          return false;
+        }
         
         // Find the employee who applied for leave
         const applicant = allEmployees.find(emp => emp.id === leave.userId);
         
+        if (!applicant) {
+          console.log('Applicant not found for leave:', leave.id);
+          return false;
+        }
+        
         // Include if applicant is in the same department as the manager
-        return applicant?.departmentId === currentUser.departmentId;
+        const inSameDepartment = applicant.departmentId === currentUser.departmentId;
+        
+        if (inSameDepartment) {
+          console.log('Found leave from same department:', {
+            leaveId: leave.id,
+            applicantName: `${applicant.firstName} ${applicant.lastName}`,
+            department: applicant.departmentId
+          });
+        }
+        
+        return inSameDepartment;
       });
 
+      console.log('Pending leaves for manager:', pendingLeaves.length);
       res.json(pendingLeaves);
     } catch (error) {
       console.error('Failed to fetch pending leaves:', error);
@@ -851,6 +875,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const employee = await storage.getUserProfile(userId);
       let managerId = null;
 
+      console.log('Employee applying for leave:', {
+        userId,
+        departmentId: employee?.departmentId,
+        directManagerId: employee?.managerId
+      });
+
       if (employee?.departmentId) {
         // Find all managers in the employee's department
         const allEmployees = await storage.getAllUserProfiles();
@@ -864,6 +894,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const role = await storage.getUserRole(emp.roleId);
             if (role && role.accessLevel === 'Manager') {
               managerId = emp.id;
+              console.log('Found department manager:', {
+                managerId: emp.id,
+                managerName: `${emp.firstName} ${emp.lastName}`,
+                department: emp.departmentId
+              });
               break; // Found a manager in the same department
             }
           }
@@ -873,6 +908,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fallback to direct manager if no department manager found
       if (!managerId && employee?.managerId) {
         managerId = employee.managerId;
+        console.log('Using direct manager as fallback:', managerId);
+      }
+
+      if (!managerId) {
+        console.log('No manager found for leave approval');
       }
 
       const validated = insertLeaveSchema.parse({
@@ -881,6 +921,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         managerId, // Set manager from department or direct manager
       });
       const leave = await storage.createLeave(validated);
+      
+      console.log('Leave created:', {
+        leaveId: leave.id,
+        userId: leave.userId,
+        managerId: leave.managerId,
+        status: leave.status
+      });
 
       // Send email notification to manager
       try {
