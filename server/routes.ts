@@ -797,9 +797,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
-      const leaves = await storage.getLeavesByUser(userId);
+      const currentUser = await storage.getUserProfile(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let userRole = req.session.userRole;
+      
+      // Fallback: fetch role from storage if not in session
+      if (!userRole && currentUser.roleId) {
+        const role = await storage.getUserRole(currentUser.roleId);
+        if (role) {
+          userRole = {
+            accessLevel: role.accessLevel,
+            roleName: role.roleName
+          };
+          req.session.userRole = userRole;
+        }
+      }
+
+      // Managers, HR, and Admins see all leaves from their team/department
+      const canViewTeamLeaves = ['Admin', 'HR', 'Manager'].includes(userRole?.accessLevel || '');
+      
+      let leaves;
+      if (canViewTeamLeaves) {
+        // Get all leaves
+        const allLeaves = await storage.getAllLeaves();
+        const allEmployees = await storage.getAllUserProfiles();
+        
+        // For managers, filter to show leaves from their department or assigned to them
+        if (userRole?.accessLevel === 'Manager') {
+          leaves = allLeaves.filter(leave => {
+            // Include own leaves
+            if (leave.userId === userId) {
+              return true;
+            }
+            
+            // Include leaves assigned to this manager
+            if (leave.managerId === userId) {
+              return true;
+            }
+            
+            // Include leaves from employees in same department
+            if (currentUser.departmentId) {
+              const applicant = allEmployees.find(emp => emp.id === leave.userId);
+              if (applicant?.departmentId === currentUser.departmentId) {
+                return true;
+              }
+            }
+            
+            return false;
+          });
+        } else {
+          // HR and Admin see all leaves
+          leaves = allLeaves;
+        }
+      } else {
+        // Employees see only their own leaves
+        leaves = await storage.getLeavesByUser(userId);
+      }
+
       res.json(leaves);
     } catch (error) {
+      console.error('Failed to fetch leaves:', error);
       res.status(500).json({ message: "Failed to fetch leaves" });
     }
   });
