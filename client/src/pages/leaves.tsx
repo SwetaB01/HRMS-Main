@@ -51,6 +51,10 @@ export default function Leaves() {
     queryKey: ["/api/leave-types"],
   });
 
+  const { data: employees } = useQuery<any[]>({
+    queryKey: ["/api/employees"],
+  });
+
   const approveLeaveMutation = useMutation({
     mutationFn: async (leaveId: string) => {
       setIsSubmitting(true);
@@ -126,6 +130,13 @@ export default function Leaves() {
     if (!leaveTypeId || !leaveTypes) return leaveTypeId;
     const leaveType = leaveTypes.find(lt => lt.id === leaveTypeId);
     return leaveType ? leaveType.name : leaveTypeId;
+  };
+
+  const getEmployeeName = (userId: string) => {
+    if (!employees) return "Loading...";
+    const employee = employees.find(emp => emp.id === userId);
+    if (!employee) return "Unknown";
+    return `${employee.firstName} ${employee.lastName}`;
   };
 
   const getStatusBadge = (status: string) => {
@@ -215,6 +226,7 @@ export default function Leaves() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Employee Name</TableHead>
                   <TableHead>Leave Type</TableHead>
                   <TableHead>From Date</TableHead>
                   <TableHead>To Date</TableHead>
@@ -230,6 +242,7 @@ export default function Leaves() {
                   <>
                     {[1, 2, 3, 4, 5].map((i) => (
                       <TableRow key={i}>
+                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
@@ -244,6 +257,7 @@ export default function Leaves() {
                 ) : leaves && leaves.length > 0 ? (
                   leaves.map((leave) => (
                     <TableRow key={leave.id} data-testid={`row-leave-${leave.id}`}>
+                      <TableCell className="font-medium">{getEmployeeName(leave.userId)}</TableCell>
                       <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
                       <TableCell>{leave.fromDate}</TableCell>
                       <TableCell>{leave.toDate}</TableCell>
@@ -285,7 +299,7 @@ export default function Leaves() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       No leave applications found
                     </TableCell>
                   </TableRow>
