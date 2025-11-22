@@ -1188,8 +1188,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create attendance records for the leave period
       try {
-        for (let date = new Date(fromDate); date <= toDate; date.setDate(date.getDate() + 1)) {
-          const attendanceDate = date.toISOString().split('T')[0];
+        const currentDate = new Date(fromDate);
+        const endDate = new Date(toDate);
+        
+        while (currentDate <= endDate) {
+          const attendanceDate = currentDate.toISOString().split('T')[0];
 
           // Check if attendance record already exists for this date
           const existingAttendance = await storage.getAttendanceByDate(approvedLeave.userId, attendanceDate);
@@ -1224,6 +1227,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalDuration: approvedLeave.halfDay ? '4' : '8',
             });
           }
+          
+          // Move to next day
+          currentDate.setDate(currentDate.getDate() + 1);
         }
       } catch (attendanceError) {
         console.error('Failed to create attendance records for leave:', attendanceError);
