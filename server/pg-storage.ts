@@ -291,6 +291,30 @@ export class PostgresStorage implements IStorage {
     return await db.select().from(leaveLedgers).where(eq(leaveLedgers.userId, userId));
   }
 
+  async getLeaveLedgerByUserAndType(userId: string, leaveTypeId: string, year: number): Promise<LeaveLedger | undefined> {
+    const [ledger] = await db.select().from(leaveLedgers)
+      .where(and(
+        eq(leaveLedgers.userId, userId),
+        eq(leaveLedgers.leaveTypeId, leaveTypeId),
+        eq(leaveLedgers.year, year)
+      ))
+      .limit(1);
+    return ledger;
+  }
+
+  async createLeaveLedger(ledger: InsertLeaveLedger): Promise<LeaveLedger> {
+    const [newLedger] = await db.insert(leaveLedgers).values(ledger).returning();
+    return newLedger;
+  }
+
+  async updateLeaveLedger(id: string, updates: Partial<InsertLeaveLedger>): Promise<LeaveLedger | undefined> {
+    const [updated] = await db.update(leaveLedgers)
+      .set(updates)
+      .where(eq(leaveLedgers.id, id))
+      .returning();
+    return updated;
+  }
+
   async createLeaveLedger(ledger: InsertLeaveLedger): Promise<LeaveLedger> {
     const [newLedger] = await db.insert(leaveLedgers).values(ledger).returning();
     return newLedger;

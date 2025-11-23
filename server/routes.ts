@@ -1317,6 +1317,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Assign leave quota to all employees - HR and Admin only
+  app.post("/api/leave-quota/assign-all", requireHROrAdmin, async (req, res) => {
+    try {
+      const { leaveTypeId, totalLeaves, year } = req.body;
+
+      if (!leaveTypeId || !totalLeaves || !year) {
+        return res.status(400).json({ 
+          message: "Leave type, total leaves, and year are required" 
+        });
+      }
+
+      // Get all active employees
+      const employees = await storage.getAllUserProfiles();
+      const activeEmployees = employees.filter(emp => emp.status === 'Active');
+
+      // Create leave ledger entries for all employees
+      const results = [];
+      for (const employee of activeEmployees) {
+        // Check if ledger entry already exists
+        const existingLedger = await storage.getLeaveLedgerByUserAndType(
+          employee.id, 
+          leaveTypeId, 
+          year
+        );
+
+        if (existingLedger) {
+          // Update existing ledger
+          const updated = await storage.updateLeaveLedger(existingLedger.id, {
+            totalLeaves: totalLeaves.toString(),
+          });
+          results.push(updated);
+        } else {
+          // Create new ledger entry
+          const newLedger = await storage.createLeaveLedger({
+            userId: employee.id,
+            leaveTypeId,
+            totalLeaves: totalLeaves.toString(),
+            usedLeaves: "0",
+            year,
+          });
+          results.push(newLedger);
+        }
+      }
+
+      res.json({
+        message: `Leave quota assigned to ${results.length} employees`,
+        count: results.length,
+      });
+    } catch (error: any) {
+      console.error('Failed to assign leave quota:', error);
+      res.status(500).json({ message: error.message || "Failed to assign leave quota" });
+    }
+  });
+
   // Holiday Routes - All authenticated users can view
   app.get("/api/holidays", requireAuth, async (req, res) => {
     try {

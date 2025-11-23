@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Plus, Calendar, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Calendar, CheckCircle, XCircle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -19,6 +19,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,6 +41,10 @@ export default function Leaves() {
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [comments, setComments] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAssignQuotaDialogOpen, setIsAssignQuotaDialogOpen] = useState(false);
+  const [quotaLeaveTypeId, setQuotaLeaveTypeId] = useState("");
+  const [quotaAmount, setQuotaAmount] = useState("10");
+  const [quotaYear, setQuotaYear] = useState(new Date().getFullYear().toString());
 
   const { data: leaves, isLoading, refetch } = useQuery<Leave[]>({
     queryKey: ["/api/leaves"],
@@ -113,6 +124,34 @@ export default function Leaves() {
     },
   });
 
+  const assignQuotaMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/leave-quota/assign-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          leaveTypeId: quotaLeaveTypeId,
+          totalLeaves: parseInt(quotaAmount),
+          year: parseInt(quotaYear),
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to assign leave quota");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leave-balance"] });
+      setIsAssignQuotaDialogOpen(false);
+      alert(`Successfully assigned leave quota to ${data.count} employees`);
+    },
+    onError: (error: any) => {
+      alert(error.message || "Failed to assign leave quota");
+    },
+  });
+
   const handleApprove = () => {
     if (selectedLeave) {
       approveLeaveMutation.mutate(selectedLeave.id);
@@ -157,28 +196,100 @@ export default function Leaves() {
             Apply for leaves and track your balance
           </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-apply-leave">
-              <Plus className="h-4 w-4 mr-2" />
-              Apply Leave
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Apply for Leave</DialogTitle>
-              <DialogDescription>
-                Submit a new leave application
-              </DialogDescription>
-            </DialogHeader>
-            <LeaveForm
-              onSuccess={() => {
-                setIsAddDialogOpen(false);
-                refetch(); // Refetch leaves after a successful submission
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          {(currentUser?.accessLevel === 'Admin' || currentUser?.accessLevel === 'HR') && (
+            <Dialog open={isAssignQuotaDialogOpen} onOpenChange={setIsAssignQuotaDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Users className="h-4 w-4 mr-2" />
+                  Assign Quota to All
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Assign Leave Quota to All Employees</DialogTitle>
+                  <DialogDescription>
+                    Set leave quota for all active employees
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium">Leave Type</label>
+                    <select
+                      className="w-full mt-1 p-2 border rounded-md"
+                      value={quotaLeaveTypeId}
+                      onChange={(e) => setQuotaLeaveTypeId(e.target.value)}
+                    >
+                      <option value="">Select leave type</option>
+                      {leaveTypes?.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Total Leaves</label>
+                    <input
+                      type="number"
+                      className="w-full mt-1 p-2 border rounded-md"
+                      value={quotaAmount}
+                      onChange={(e) => setQuotaAmount(e.target.value)}
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Year</label>
+                    <input
+                      type="number"
+                      className="w-full mt-1 p-2 border rounded-md"
+                      value={quotaYear}
+                      onChange={(e) => setQuotaYear(e.target.value)}
+                      min="2020"
+                      max="2030"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsAssignQuotaDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => assignQuotaMutation.mutate()}
+                      disabled={!quotaLeaveTypeId || assignQuotaMutation.isPending}
+                    >
+                      {assignQuotaMutation.isPending ? "Assigning..." : "Assign Quota"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-apply-leave">
+                <Plus className="h-4 w-4 mr-2" />
+                Apply Leave
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Apply for Leave</DialogTitle>
+                <DialogDescription>
+                  Submit a new leave application
+                </DialogDescription>
+              </DialogHeader>
+              <LeaveForm
+                onSuccess={() => {
+                  setIsAddDialogOpen(false);
+                  refetch(); // Refetch leaves after a successful submission
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
