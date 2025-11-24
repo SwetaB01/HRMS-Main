@@ -1102,8 +1102,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Move to the next day
           currentDate.setDate(currentDate.getDate() + 1);
         }
-      } else if (updateData.status === 'Rejected' && existingLeave.status !== 'Rejected') {
-        // If leave is rejected, remove any "On Leave" attendance records for the period
+      } else if (updateData.status === 'Rejected' && existingLeave.status === 'Approved') {
+        // If previously approved leave is now rejected, reverse the leave ledger
+        try {
+          const fromDate = new Date(leave.fromDate);
+          const toDate = new Date(leave.toDate);
+          const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          const leaveDays = leave.halfDay ? 0.5 : daysDiff;
+          
+          await storage.updateLeaveLedgerUsage(
+            leave.userId,
+            leave.leaveTypeId,
+            new Date().getFullYear(),
+            -leaveDays // Negative to add back the leaves
+          );
+        } catch (ledgerError) {
+          console.error('Failed to reverse leave ledger:', ledgerError);
+        }
+        
+        // Remove any "On Leave" attendance records for the period
         const fromDate = new Date(leave.fromDate);
         const toDate = new Date(leave.toDate);
         const currentDate = new Date(fromDate);
@@ -1184,6 +1201,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const approvedLeave = await storage.approveLeave(id, managerId, comments);
       if (!approvedLeave) {
         return res.status(404).json({ message: "Leave not found" });
+      }
+
+      // Update leave ledger - deduct used leaves
+      try {
+        const fromDate = new Date(approvedLeave.fromDate);
+        const toDate = new Date(approvedLeave.toDate);
+        const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const leaveDays = approvedLeave.halfDay ? 0.5 : daysDiff;
+        
+        await storage.updateLeaveLedgerUsage(
+          approvedLeave.userId,
+          approvedLeave.leaveTypeId,
+          new Date().getFullYear(),
+          leaveDays
+        );
+      } catch (ledgerError) {
+        console.error('Failed to update leave ledger:', ledgerError);
+        // Continue even if ledger update fails
       }
 
       // Create attendance records for the leave period

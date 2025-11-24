@@ -287,6 +287,39 @@ export class PostgresStorage implements IStorage {
     return updated;
   }
 
+  async updateLeaveLedgerUsage(userId: string, leaveTypeId: string, year: number, days: number): Promise<void> {
+    // Find existing ledger entry
+    const existing = await db.select()
+      .from(leaveLedgers)
+      .where(
+        and(
+          eq(leaveLedgers.userId, userId),
+          eq(leaveLedgers.leaveTypeId, leaveTypeId),
+          eq(leaveLedgers.year, year)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing ledger
+      const currentUsed = parseFloat(existing[0].usedLeaves || '0');
+      const newUsed = Math.max(0, currentUsed + days); // Ensure it doesn't go negative
+      
+      await db.update(leaveLedgers)
+        .set({ usedLeaves: newUsed.toString() })
+        .where(eq(leaveLedgers.id, existing[0].id));
+    } else {
+      // Create new ledger entry if it doesn't exist
+      await db.insert(leaveLedgers).values({
+        userId,
+        leaveTypeId,
+        totalLeaves: '0',
+        usedLeaves: Math.max(0, days).toString(),
+        year,
+      });
+    }
+  }
+
   async getLeaveLedgerByUser(userId: string): Promise<LeaveLedger[]> {
     return await db.select().from(leaveLedgers).where(eq(leaveLedgers.userId, userId));
   }

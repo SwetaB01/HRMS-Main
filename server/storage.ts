@@ -60,6 +60,7 @@ export interface IStorage {
   updateLeave(id: string, leave: Partial<InsertLeave>): Promise<Leave | undefined>;
   approveLeave(id: string, managerId: string, comments?: string): Promise<Leave | undefined>;
   rejectLeave(id: string, managerId: string, comments: string): Promise<Leave | undefined>;
+  updateLeaveLedgerUsage(userId: string, leaveTypeId: string, year: number, days: number): Promise<void>;
 
   // Leave Ledger Operations
   getLeaveLedgerByUser(userId: string): Promise<LeaveLedger[]>;
@@ -401,6 +402,10 @@ export class MemStorage implements IStorage {
     leave.status = 'Approved';
     leave.managerApprovalDate = new Date();
     if (comments) leave.managerComments = comments;
+
+    // Update leave ledger usage
+    await this.updateLeaveLedgerUsage(leave.userId, leave.leaveTypeId, new Date().getFullYear(), -1); // Assuming 1 day leave
+
     this.leaves.set(id, leave);
     return leave;
   }
@@ -414,6 +419,29 @@ export class MemStorage implements IStorage {
     this.leaves.set(id, leave);
     return leave;
   }
+
+  async updateLeaveLedgerUsage(userId: string, leaveTypeId: string, year: number, days: number): Promise<void> {
+    const existingLedgers = Array.from(this.leaveLedgers.values()).filter(
+      l => l.userId === userId && l.leaveTypeId === leaveTypeId && l.year === year
+    );
+
+    if (existingLedgers.length > 0) {
+      const ledger = existingLedgers[0];
+      ledger.daysUsed += days; // Add or subtract days
+      this.leaveLedgers.set(ledger.id, ledger);
+    } else {
+      // If no ledger exists for this year, create one (this might need adjustment based on leave policy)
+      const newLedger: InsertLeaveLedger = {
+        userId: userId,
+        leaveTypeId: leaveTypeId,
+        year: year,
+        totalDays: 0, // Assuming totalDays will be set elsewhere or is a default
+        daysUsed: days,
+      };
+      await this.createLeaveLedger(newLedger);
+    }
+  }
+
 
   // Leave Ledger Operations
   async getLeaveLedgerByUser(userId: string): Promise<LeaveLedger[]> {
