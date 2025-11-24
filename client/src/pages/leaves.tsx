@@ -64,7 +64,8 @@ export default function Leaves() {
 
   const { data: employees, isLoading: isLoadingEmployees } = useQuery<any[]>({
     queryKey: ["/api/employees"],
-    enabled: !!currentUser,
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   const approveLeaveMutation = useMutation({
@@ -174,15 +175,20 @@ export default function Leaves() {
 
   const getEmployeeName = (userId: string) => {
     if (isLoadingEmployees) return "Loading...";
-    if (!employees) return "Unknown";
+    
+    // Check if it's the current user first
+    if (currentUser && currentUser.id === userId) {
+      return `${currentUser.firstName} ${currentUser.lastName}`;
+    }
+    
+    // Then check employees list
+    if (!employees || employees.length === 0) return "Unknown";
+    
     const employee = employees.find(emp => emp.id === userId);
     if (!employee) {
-      // If not found in employees list, check if it's the current user
-      if (currentUser && currentUser.id === userId) {
-        return `${currentUser.firstName} ${currentUser.lastName}`;
-      }
-      return "Unknown Employee";
+      return "Unknown";
     }
+    
     return `${employee.firstName} ${employee.lastName}`;
   };
 
