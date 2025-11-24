@@ -1222,6 +1222,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Calculate leave days BEFORE approval
+      const leaveDaysFromDate = new Date(leave.fromDate);
+      const leaveDaysToDate = new Date(leave.toDate);
+      const daysDiff = Math.ceil((leaveDaysToDate.getTime() - leaveDaysFromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const leaveDays = leave.halfDay ? 0.5 : daysDiff;
+
+      console.log('Approving leave - calculated days:', {
+        userId: leave.userId,
+        leaveTypeId: leave.leaveTypeId,
+        fromDate: leave.fromDate,
+        toDate: leave.toDate,
+        daysDiff,
+        leaveDays,
+        halfDay: leave.halfDay
+      });
+
       // Approve the leave
       const approvedLeave = await storage.approveLeave(id, managerId, comments);
       if (!approvedLeave) {
@@ -1230,27 +1246,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update leave ledger - deduct used leaves
       try {
-        const fromDate = new Date(approvedLeave.fromDate);
-        const toDate = new Date(approvedLeave.toDate);
-        const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        const leaveDays = approvedLeave.halfDay ? 0.5 : daysDiff;
-        
-        console.log('Approving leave - updating ledger:', {
-          userId: approvedLeave.userId,
-          leaveTypeId: approvedLeave.leaveTypeId,
-          fromDate: approvedLeave.fromDate,
-          toDate: approvedLeave.toDate,
-          daysDiff,
-          leaveDays,
-          halfDay: approvedLeave.halfDay
-        });
-        
         await storage.updateLeaveLedgerUsage(
-          approvedLeave.userId,
-          approvedLeave.leaveTypeId,
+          leave.userId,
+          leave.leaveTypeId,
           new Date().getFullYear(),
           leaveDays
         );
+        console.log('Leave ledger updated successfully');
       } catch (ledgerError) {
         console.error('Failed to update leave ledger:', ledgerError);
         // Continue even if ledger update fails

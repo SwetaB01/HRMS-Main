@@ -308,24 +308,33 @@ export default function Leaves() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {leaveBalance && leaveBalance.length > 0 ? (
-          leaveBalance.map((balance) => (
-            <Card key={balance.id}>
-              <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {getLeaveTypeName(balance.leaveTypeId)}
-                </CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {Number(balance.totalLeaves) - Number(balance.usedLeaves || 0)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  of {balance.totalLeaves} available
-                </p>
-              </CardContent>
-            </Card>
-          ))
+          leaveBalance.map((balance) => {
+            const available = Number(balance.totalLeaves) - Number(balance.usedLeaves || 0);
+            console.log('Leave balance calculation:', {
+              leaveType: getLeaveTypeName(balance.leaveTypeId),
+              total: balance.totalLeaves,
+              used: balance.usedLeaves,
+              available
+            });
+            return (
+              <Card key={balance.id}>
+                <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {getLeaveTypeName(balance.leaveTypeId)}
+                  </CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {available}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    of {balance.totalLeaves} available (used: {balance.usedLeaves || 0})
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })
         ) : (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
