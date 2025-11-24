@@ -1060,6 +1060,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (updateData.status === 'Approved' && existingLeave.status !== 'Approved') {
         const fromDate = new Date(leave.fromDate);
         const toDate = new Date(leave.toDate);
+        
+        // Update leave ledger - deduct used leaves
+        try {
+          const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          const leaveDays = leave.halfDay ? 0.5 : daysDiff;
+          
+          console.log('Leave status changed to Approved - updating ledger:', {
+            userId: leave.userId,
+            leaveTypeId: leave.leaveTypeId,
+            fromDate: leave.fromDate,
+            toDate: leave.toDate,
+            daysDiff,
+            leaveDays,
+            halfDay: leave.halfDay
+          });
+          
+          await storage.updateLeaveLedgerUsage(
+            leave.userId,
+            leave.leaveTypeId,
+            new Date().getFullYear(),
+            leaveDays
+          );
+        } catch (ledgerError) {
+          console.error('Failed to update leave ledger:', ledgerError);
+        }
 
         // Create attendance records for each day in the leave period
         const currentDate = new Date(fromDate);
@@ -1209,6 +1234,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const toDate = new Date(approvedLeave.toDate);
         const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         const leaveDays = approvedLeave.halfDay ? 0.5 : daysDiff;
+        
+        console.log('Approving leave - updating ledger:', {
+          userId: approvedLeave.userId,
+          leaveTypeId: approvedLeave.leaveTypeId,
+          fromDate: approvedLeave.fromDate,
+          toDate: approvedLeave.toDate,
+          daysDiff,
+          leaveDays,
+          halfDay: approvedLeave.halfDay
+        });
         
         await storage.updateLeaveLedgerUsage(
           approvedLeave.userId,

@@ -305,11 +305,27 @@ export class PostgresStorage implements IStorage {
       const currentUsed = parseFloat(existing[0].usedLeaves || '0');
       const newUsed = Math.max(0, currentUsed + days); // Ensure it doesn't go negative
       
+      console.log('Updating leave ledger:', {
+        userId,
+        leaveTypeId,
+        year,
+        currentUsed,
+        daysToAdd: days,
+        newUsed
+      });
+      
       await db.update(leaveLedgers)
         .set({ usedLeaves: newUsed.toString() })
         .where(eq(leaveLedgers.id, existing[0].id));
     } else {
       // Create new ledger entry if it doesn't exist
+      console.log('Creating new leave ledger entry:', {
+        userId,
+        leaveTypeId,
+        year,
+        usedLeaves: Math.max(0, days)
+      });
+      
       await db.insert(leaveLedgers).values({
         userId,
         leaveTypeId,
