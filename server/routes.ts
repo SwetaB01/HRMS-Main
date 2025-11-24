@@ -264,8 +264,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // Employee Management Routes - HR and Admin can manage
-  app.get("/api/employees", requireHROrAdmin, async (req, res) => {
+  // Employee Management Routes - Managers, HR and Admin can view; HR and Admin can manage
+  app.get("/api/employees", requireManagerOrHROrAdmin, async (req, res) => {
     try {
       const employees = await storage.getAllUserProfiles();
 

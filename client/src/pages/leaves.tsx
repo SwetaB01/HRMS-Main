@@ -64,6 +64,7 @@ export default function Leaves() {
 
   const { data: employees, isLoading: isLoadingEmployees } = useQuery<any[]>({
     queryKey: ["/api/employees"],
+    enabled: !!currentUser,
   });
 
   const approveLeaveMutation = useMutation({
