@@ -62,7 +62,7 @@ export default function Leaves() {
     queryKey: ["/api/leave-types"],
   });
 
-  const { data: employees } = useQuery<any[]>({
+  const { data: employees, isLoading: isLoadingEmployees } = useQuery<any[]>({
     queryKey: ["/api/employees"],
   });
 
@@ -172,9 +172,16 @@ export default function Leaves() {
   };
 
   const getEmployeeName = (userId: string) => {
-    if (!employees) return "Loading...";
+    if (isLoadingEmployees) return "Loading...";
+    if (!employees) return "Unknown";
     const employee = employees.find(emp => emp.id === userId);
-    if (!employee) return "Unknown";
+    if (!employee) {
+      // If not found in employees list, check if it's the current user
+      if (currentUser && currentUser.id === userId) {
+        return `${currentUser.firstName} ${currentUser.lastName}`;
+      }
+      return "Unknown Employee";
+    }
     return `${employee.firstName} ${employee.lastName}`;
   };
 
