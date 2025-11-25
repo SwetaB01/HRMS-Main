@@ -996,9 +996,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('No manager found for leave approval');
       }
 
-      // Calculate requested leave days
+      // Check if employee has already marked attendance as Present for any day in the leave period
       const fromDate = new Date(leaveData.fromDate);
       const toDate = new Date(leaveData.toDate);
+      const presentDates: string[] = [];
+
+      for (let date = new Date(fromDate); date <= toDate; date.setDate(date.getDate() + 1)) {
+        const dateStr = date.toISOString().split('T')[0];
+        const existingAttendance = await storage.getAttendanceByDate(userId, dateStr);
+        
+        if (existingAttendance && existingAttendance.status === 'Present') {
+          presentDates.push(dateStr);
+        }
+      }
+
+      if (presentDates.length > 0) {
+        return res.status(400).json({
+          message: `Cannot apply for leave. You have already marked attendance as Present for the following dates: ${presentDates.join(', ')}. Please remove those attendance records first.`
+        });
+      }
+
+      // Calculate requested leave days
       const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const requestedDays = leaveData.halfDay ? 0.5 : daysDiff;
 
