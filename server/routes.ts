@@ -1222,33 +1222,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Calculate leave days BEFORE approval
-      const leaveDaysFromDate = new Date(leave.fromDate);
-      const leaveDaysToDate = new Date(leave.toDate);
-      const daysDiff = Math.ceil((leaveDaysToDate.getTime() - leaveDaysFromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const leaveDays = leave.halfDay ? 0.5 : daysDiff;
-
-      console.log('Approving leave - calculated days:', {
-        userId: leave.userId,
-        leaveTypeId: leave.leaveTypeId,
-        fromDate: leave.fromDate,
-        toDate: leave.toDate,
-        daysDiff,
-        leaveDays,
-        halfDay: leave.halfDay
-      });
-
-      // Approve the leave
+      // Approve the leave first
       const approvedLeave = await storage.approveLeave(id, managerId, comments);
       if (!approvedLeave) {
         return res.status(404).json({ message: "Leave not found" });
       }
 
+      // Calculate leave days AFTER approval using approved leave data
+      const leaveDaysFromDate = new Date(approvedLeave.fromDate);
+      const leaveDaysToDate = new Date(approvedLeave.toDate);
+      const daysDiff = Math.ceil((leaveDaysToDate.getTime() - leaveDaysFromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const leaveDays = approvedLeave.halfDay ? 0.5 : daysDiff;
+
+      console.log('Approving leave - calculated days:', {
+        userId: approvedLeave.userId,
+        leaveTypeId: approvedLeave.leaveTypeId,
+        fromDate: approvedLeave.fromDate,
+        toDate: approvedLeave.toDate,
+        daysDiff,
+        leaveDays,
+        halfDay: approvedLeave.halfDay
+      });
+
       // Update leave ledger - deduct used leaves
       try {
         await storage.updateLeaveLedgerUsage(
-          leave.userId,
-          leave.leaveTypeId,
+          approvedLeave.userId,
+          approvedLeave.leaveTypeId,
           new Date().getFullYear(),
           leaveDays
         );

@@ -64,7 +64,8 @@ export default function Leaves() {
 
   const { data: employees, isLoading: isLoadingEmployees } = useQuery<any[]>({
     queryKey: ["/api/employees"],
-    retry: 2,
+    retry: false,
+    enabled: currentUser?.accessLevel !== 'Employee', // Only fetch if not a regular employee
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
@@ -174,19 +175,21 @@ export default function Leaves() {
   };
 
   const getEmployeeName = (userId: string) => {
-    if (isLoadingEmployees) return "Loading...";
-    
     // Check if it's the current user first
     if (currentUser && currentUser.id === userId) {
       return `${currentUser.firstName} ${currentUser.lastName}`;
     }
     
-    // Then check employees list
-    if (!employees || employees.length === 0) return "Unknown";
+    // If we don't have access to employees list (regular employee), just show "You" or "Employee"
+    if (!employees || employees.length === 0) {
+      return currentUser && currentUser.id === userId ? "You" : "Employee";
+    }
+    
+    if (isLoadingEmployees) return "Loading...";
     
     const employee = employees.find(emp => emp.id === userId);
     if (!employee) {
-      return "Unknown";
+      return "Employee";
     }
     
     return `${employee.firstName} ${employee.lastName}`;
