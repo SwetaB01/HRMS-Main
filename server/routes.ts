@@ -1295,10 +1295,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create attendance records for the leave period
       try {
-        const currentDate = new Date(fromDate);
-        const endDate = new Date(toDate);
+        const leaveDateFrom = new Date(approvedLeave.fromDate);
+        const leaveDateTo = new Date(approvedLeave.toDate);
+        const currentDate = new Date(leaveDateFrom);
         
-        while (currentDate <= endDate) {
+        while (currentDate <= leaveDateTo) {
           const attendanceDate = currentDate.toISOString().split('T')[0];
 
           // Check if attendance record already exists for this date
@@ -1310,8 +1311,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               userId: approvedLeave.userId,
               attendanceDate,
               status: 'On Leave',
-              leaveTypeId: approvedLeave.leaveTypeId,
-              companyId: approvedLeave.companyId || null,
               checkIn: null,
               checkOut: null,
               totalDuration: approvedLeave.halfDay ? '4' : '8',
@@ -1320,17 +1319,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lateSignIn: false,
               lateSignOut: false,
               regularizationRequested: false,
-              shiftTiming: null,
-              regularizationReason: null,
-              regularizationStatus: null,
-              regularizationApprovedBy: null,
-              regularizationApprovedAt: null,
             });
           } else {
             // Update existing attendance to "On Leave"
             await storage.updateAttendance(existingAttendance.id, {
               status: 'On Leave',
-              leaveTypeId: approvedLeave.leaveTypeId,
               totalDuration: approvedLeave.halfDay ? '4' : '8',
             });
           }
