@@ -303,23 +303,39 @@ export class PostgresStorage implements IStorage {
     if (existing.length > 0) {
       // Update existing ledger
       const currentUsed = parseFloat(existing[0].usedLeaves || '0');
+      const currentTotal = parseFloat(existing[0].totalLeaves || '0');
       const newUsed = Math.max(0, currentUsed + days); // Ensure it doesn't go negative
+      
+      // Ensure used leaves don't exceed total leaves (optional validation)
+      if (newUsed > currentTotal && days > 0) {
+        console.warn('Warning: Used leaves exceed total leaves', {
+          userId,
+          leaveTypeId,
+          year,
+          currentUsed,
+          currentTotal,
+          daysToAdd: days,
+          newUsed
+        });
+      }
       
       console.log('Updating leave ledger:', {
         userId,
         leaveTypeId,
         year,
         currentUsed,
+        currentTotal,
         daysToAdd: days,
-        newUsed
+        newUsed,
+        remainingLeaves: currentTotal - newUsed
       });
       
       await db.update(leaveLedgers)
         .set({ usedLeaves: newUsed.toString() })
         .where(eq(leaveLedgers.id, existing[0].id));
     } else {
-      // Create new ledger entry if it doesn't exist
-      console.log('Creating new leave ledger entry:', {
+      // Create new ledger entry if it doesn't exist with initial quota of 0
+      console.log('Creating new leave ledger entry (no quota assigned yet):', {
         userId,
         leaveTypeId,
         year,

@@ -996,6 +996,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('No manager found for leave approval');
       }
 
+      // Calculate requested leave days
+      const fromDate = new Date(leaveData.fromDate);
+      const toDate = new Date(leaveData.toDate);
+      const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const requestedDays = leaveData.halfDay ? 0.5 : daysDiff;
+
+      // Check leave balance
+      const leaveLedger = await storage.getLeaveLedgerByUser(userId);
+      const currentYearLedger = leaveLedger.find(
+        l => l.leaveTypeId === leaveData.leaveTypeId && l.year === new Date().getFullYear()
+      );
+
+      if (currentYearLedger) {
+        const totalLeaves = parseFloat(currentYearLedger.totalLeaves || '0');
+        const usedLeaves = parseFloat(currentYearLedger.usedLeaves || '0');
+        const availableLeaves = totalLeaves - usedLeaves;
+
+        console.log('Leave balance check:', {
+          userId,
+          leaveTypeId: leaveData.leaveTypeId,
+          totalLeaves,
+          usedLeaves,
+          availableLeaves,
+          requestedDays
+        });
+
+        if (requestedDays > availableLeaves) {
+          return res.status(400).json({ 
+            message: `Insufficient leave balance. You have ${availableLeaves} days available but requested ${requestedDays} days.` 
+          });
+        }
+      } else {
+        console.warn('No leave ledger found for user, proceeding without balance check');
+      }
+
       const validated = insertLeaveSchema.parse({
         ...leaveData,
         userId, // Use authenticated user's ID
@@ -1346,9 +1381,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Comments are required for rejection" });
       }
 
+      // Get the leave before rejection to check if it was previously approved
+      const existingLeave = await storage.getLeave(id);
+      if (!existingLeave) {
+        return res.status(404).json({ message: "Leave not found" });
+      }
+
+      const wasApproved = existingLeave.status === 'Approved';
+
       const leave = await storage.rejectLeave(id, managerId, comments);
       if (!leave) {
         return res.status(404).json({ message: "Leave not found" });
+      }
+
+      // If the leave was previously approved, restore the leave quota
+      if (wasApproved) {
+        try {
+          const fromDate = new Date(leave.fromDate);
+          const toDate = new Date(leave.toDate);
+          const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          const leaveDays = leave.halfDay ? 0.5 : daysDiff;
+          
+          console.log('Restoring leave quota after rejection:', {
+            userId: leave.userId,
+            leaveTypeId: leave.leaveTypeId,
+            leaveDays
+          });
+          
+          // Negative days to add back the leaves
+          await storage.updateLeaveLedgerUsage(
+            leave.userId,
+            leave.leaveTypeId,
+            new Date().getFullYear(),
+            -leaveDays
+          );
+        } catch (ledgerError) {
+          console.error('Failed to restore leave ledger:', ledgerError);
+        }
+
+        // Remove any "On Leave" attendance records for the period
+        const fromDate = new Date(leave.fromDate);
+        const toDate = new Date(leave.toDate);
+        const currentDate = new Date(fromDate);
+
+        while (currentDate <= toDate) {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          const existingAttendance = await storage.getAttendanceByDate(leave.userId, dateStr);
+
+          if (existingAttendance && existingAttendance.status === 'On Leave') {
+            await storage.deleteAttendance(existingAttendance.id);
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
       }
 
       // Send email notification to employee
@@ -1375,6 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(leave);
     } catch (error) {
+      console.error('Failed to reject leave:', error);
       res.status(500).json({ message: "Failed to reject leave" });
     }
   });
