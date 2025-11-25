@@ -1320,8 +1320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lateSignOut: false,
               regularizationRequested: false,
             });
-          } else {
-            // Update existing attendance to "On Leave"
+          } else if (existingAttendance.status !== 'On Leave') {
+            // Update existing attendance to "On Leave" only if not already marked
             await storage.updateAttendance(existingAttendance.id, {
               status: 'On Leave',
               totalDuration: approvedLeave.halfDay ? '4' : '8',
