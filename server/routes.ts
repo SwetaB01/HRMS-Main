@@ -1237,6 +1237,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Leave not found" });
       }
 
+      // Don't approve if already approved
+      if (leave.status === 'Approved') {
+        return res.status(400).json({ message: "Leave is already approved" });
+      }
+
       // Check if there's any existing "Present" attendance for the leave period
       const fromDate = new Date(leave.fromDate);
       const toDate = new Date(leave.toDate);
@@ -1257,83 +1262,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Approve the leave first
+      // Calculate leave days BEFORE approval
+      const leaveDaysFromDate = new Date(leave.fromDate);
+      const leaveDaysToDate = new Date(leave.toDate);
+      const daysDiff = Math.ceil((leaveDaysToDate.getTime() - leaveDaysFromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const leaveDays = leave.halfDay ? 0.5 : daysDiff;
+
+      console.log('Approving leave - calculated days:', {
+        leaveId: id,
+        userId: leave.userId,
+        leaveTypeId: leave.leaveTypeId,
+        fromDate: leave.fromDate,
+        toDate: leave.toDate,
+        daysDiff,
+        leaveDays,
+        halfDay: leave.halfDay
+      });
+
+      // Update leave ledger FIRST - deduct used leaves
+      await storage.updateLeaveLedgerUsage(
+        leave.userId,
+        leave.leaveTypeId,
+        new Date().getFullYear(),
+        leaveDays
+      );
+      console.log('Leave ledger updated successfully');
+
+      // Now approve the leave
       const approvedLeave = await storage.approveLeave(id, managerId, comments);
       if (!approvedLeave) {
         return res.status(404).json({ message: "Leave not found" });
       }
 
-      // Calculate leave days AFTER approval using approved leave data
-      const leaveDaysFromDate = new Date(approvedLeave.fromDate);
-      const leaveDaysToDate = new Date(approvedLeave.toDate);
-      const daysDiff = Math.ceil((leaveDaysToDate.getTime() - leaveDaysFromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const leaveDays = approvedLeave.halfDay ? 0.5 : daysDiff;
-
-      console.log('Approving leave - calculated days:', {
-        userId: approvedLeave.userId,
-        leaveTypeId: approvedLeave.leaveTypeId,
-        fromDate: approvedLeave.fromDate,
-        toDate: approvedLeave.toDate,
-        daysDiff,
-        leaveDays,
-        halfDay: approvedLeave.halfDay
-      });
-
-      // Update leave ledger - deduct used leaves
-      try {
-        await storage.updateLeaveLedgerUsage(
-          approvedLeave.userId,
-          approvedLeave.leaveTypeId,
-          new Date().getFullYear(),
-          leaveDays
-        );
-        console.log('Leave ledger updated successfully');
-      } catch (ledgerError) {
-        console.error('Failed to update leave ledger:', ledgerError);
-        // Continue even if ledger update fails
-      }
-
       // Create attendance records for the leave period
-      try {
-        const leaveDateFrom = new Date(approvedLeave.fromDate);
-        const leaveDateTo = new Date(approvedLeave.toDate);
-        const currentDate = new Date(leaveDateFrom);
-        
-        while (currentDate <= leaveDateTo) {
-          const attendanceDate = currentDate.toISOString().split('T')[0];
+      const leaveDateFrom = new Date(approvedLeave.fromDate);
+      const leaveDateTo = new Date(approvedLeave.toDate);
+      const currentDate = new Date(leaveDateFrom);
+      
+      while (currentDate <= leaveDateTo) {
+        const attendanceDate = currentDate.toISOString().split('T')[0];
 
-          // Check if attendance record already exists for this date
-          const existingAttendance = await storage.getAttendanceByDate(approvedLeave.userId, attendanceDate);
+        // Check if attendance record already exists for this date
+        const existingAttendance = await storage.getAttendanceByDate(approvedLeave.userId, attendanceDate);
 
-          if (!existingAttendance) {
-            // Create attendance record with "On Leave" status
-            await storage.createAttendance({
-              userId: approvedLeave.userId,
-              attendanceDate,
-              status: 'On Leave',
-              checkIn: null,
-              checkOut: null,
-              totalDuration: approvedLeave.halfDay ? '4' : '8',
-              earlySignIn: false,
-              earlySignOut: false,
-              lateSignIn: false,
-              lateSignOut: false,
-              regularizationRequested: false,
-            });
-          } else if (existingAttendance.status !== 'On Leave') {
-            // Update existing attendance to "On Leave" only if not already marked
-            await storage.updateAttendance(existingAttendance.id, {
-              status: 'On Leave',
-              totalDuration: approvedLeave.halfDay ? '4' : '8',
-            });
-          }
-          
-          // Move to next day
-          currentDate.setDate(currentDate.getDate() + 1);
+        if (!existingAttendance) {
+          // Create attendance record with "On Leave" status
+          await storage.createAttendance({
+            userId: approvedLeave.userId,
+            attendanceDate,
+            status: 'On Leave',
+            checkIn: null,
+            checkOut: null,
+            totalDuration: approvedLeave.halfDay ? '4' : '8',
+            earlySignIn: false,
+            earlySignOut: false,
+            lateSignIn: false,
+            lateSignOut: false,
+            regularizationRequested: false,
+          });
+        } else if (existingAttendance.status !== 'On Leave') {
+          // Update existing attendance to "On Leave" only if not already marked
+          await storage.updateAttendance(existingAttendance.id, {
+            status: 'On Leave',
+            totalDuration: approvedLeave.halfDay ? '4' : '8',
+          });
         }
-      } catch (attendanceError) {
-        console.error('Failed to create attendance records for leave:', attendanceError);
-        // Continue even if attendance creation fails
+        
+        // Move to next day
+        currentDate.setDate(currentDate.getDate() + 1);
       }
 
       // Send email notification to employee
@@ -1360,6 +1356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(approvedLeave);
     } catch (error) {
+      console.error('Failed to approve leave:', error);
       res.status(500).json({ message: "Failed to approve leave" });
     }
   });
