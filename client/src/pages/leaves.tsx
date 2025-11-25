@@ -86,6 +86,7 @@ export default function Leaves() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leave-balance"] });
       queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
       setIsApproveDialogOpen(false);
       setComments("");
@@ -115,6 +116,7 @@ export default function Leaves() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leave-balance"] });
       queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
       setIsRejectDialogOpen(false);
       setComments("");

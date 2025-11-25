@@ -1354,6 +1354,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue even if email fails
       }
 
+      // Verify ledger was updated correctly
+      const updatedLedger = await storage.getLeaveLedgerByUserAndType(
+        approvedLeave.userId,
+        approvedLeave.leaveTypeId,
+        new Date().getFullYear()
+      );
+      console.log('Leave approved - ledger after update:', {
+        userId: approvedLeave.userId,
+        leaveTypeId: approvedLeave.leaveTypeId,
+        ledger: updatedLedger
+      });
+
       res.json(approvedLeave);
     } catch (error) {
       console.error('Failed to approve leave:', error);
