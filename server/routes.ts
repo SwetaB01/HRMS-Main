@@ -841,21 +841,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const allLeaves = await storage.getAllLeaves();
         const allEmployees = await storage.getAllUserProfiles();
         
-        // For Level 1 users (Admin), show leaves assigned to them (including from Level 2)
-        if (currentUserRoleLevel === 1) {
-          leaves = allLeaves.filter(leave => {
-            // Include own leaves
-            if (leave.userId === userId) {
-              return true;
-            }
-            
-            // Include leaves assigned to this admin
-            if (leave.managerId === userId) {
-              return true;
-            }
-            
-            return false;
-          });
+        // Admin access level users see ALL leaves
+        if (userRole?.accessLevel === 'Admin') {
+          leaves = allLeaves;
+        } else if (userRole?.accessLevel === 'HR') {
+          // HR see all leaves
+          leaves = allLeaves;
         } else if (userRole?.accessLevel === 'Manager') {
           // For managers, filter to show leaves from their department or assigned to them
           leaves = allLeaves.filter(leave => {
@@ -880,7 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return false;
           });
         } else {
-          // HR see all leaves
+          // Fallback: show all leaves for elevated roles
           leaves = allLeaves;
         }
       } else {
