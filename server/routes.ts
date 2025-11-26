@@ -812,6 +812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let userRole = req.session.userRole;
+      let currentUserRoleLevel = null;
       
       // Fallback: fetch role from storage if not in session
       if (!userRole && currentUser.roleId) {
@@ -821,7 +822,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             accessLevel: role.accessLevel,
             roleName: role.roleName
           };
+          currentUserRoleLevel = role.level;
           req.session.userRole = userRole;
+        }
+      } else if (userRole && currentUser.roleId) {
+        const role = await storage.getUserRole(currentUser.roleId);
+        if (role) {
+          currentUserRoleLevel = role.level;
         }
       }
 
@@ -834,8 +841,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const allLeaves = await storage.getAllLeaves();
         const allEmployees = await storage.getAllUserProfiles();
         
-        // For managers, filter to show leaves from their department or assigned to them
-        if (userRole?.accessLevel === 'Manager') {
+        // For Level 1 users (Admin), show leaves assigned to them (including from Level 2)
+        if (currentUserRoleLevel === 1) {
+          leaves = allLeaves.filter(leave => {
+            // Include own leaves
+            if (leave.userId === userId) {
+              return true;
+            }
+            
+            // Include leaves assigned to this admin
+            if (leave.managerId === userId) {
+              return true;
+            }
+            
+            return false;
+          });
+        } else if (userRole?.accessLevel === 'Manager') {
+          // For managers, filter to show leaves from their department or assigned to them
           leaves = allLeaves.filter(leave => {
             // Include own leaves
             if (leave.userId === userId) {
@@ -858,7 +880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return false;
           });
         } else {
-          // HR and Admin see all leaves
+          // HR see all leaves
           leaves = allLeaves;
         }
       } else {
@@ -873,21 +895,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/approvals/leaves", allowRoles('Manager'), async (req, res) => {
+  app.get("/api/approvals/leaves", allowRoles('Manager', 'Admin'), async (req, res) => {
     try {
       const userId = req.session.userId!;
       const currentUser = await storage.getUserProfile(userId);
       
-      console.log('Manager viewing approvals:', {
-        managerId: userId,
-        managerName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Unknown',
+      console.log('User viewing approvals:', {
+        userId: userId,
+        userName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Unknown',
         departmentId: currentUser?.departmentId,
         roleId: currentUser?.roleId
       });
       
       if (!currentUser) {
-        console.log('Manager profile not found');
+        console.log('User profile not found');
         return res.json([]);
+      }
+
+      // Get current user's role level
+      let currentUserRoleLevel = null;
+      let currentUserAccessLevel = null;
+      if (currentUser.roleId) {
+        const role = await storage.getUserRole(currentUser.roleId);
+        if (role) {
+          currentUserRoleLevel = role.level;
+          currentUserAccessLevel = role.accessLevel;
+        }
       }
 
       // Get all leaves and employees
@@ -896,10 +929,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Total leaves in system:', allLeaves.length);
       console.log('Total employees in system:', allEmployees.length);
-      console.log('Manager department:', currentUser.departmentId || 'NOT ASSIGNED');
+      console.log('Current user level:', currentUserRoleLevel);
+      console.log('Current user access level:', currentUserAccessLevel);
       
-      // Filter leaves for employees in the manager's department with 'Open' status
-      // OR leaves that are directly assigned to this manager
+      // Filter leaves based on user's role level
       const pendingLeaves = allLeaves.filter(leave => {
         // Only show 'Open' status leaves
         if (leave.status !== 'Open') {
@@ -914,27 +947,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return false;
         }
         
-        // Show leaves that are assigned to this manager OR in the same department
-        const isAssignedToManager = leave.managerId === userId;
-        const inSameDepartment = currentUser.departmentId && applicant.departmentId === currentUser.departmentId;
+        // Show leaves that are assigned to this user
+        const isAssignedToUser = leave.managerId === userId;
         
-        const shouldShow = isAssignedToManager || inSameDepartment;
-        
-        if (shouldShow) {
-          console.log('Including leave:', {
-            leaveId: leave.id,
-            applicantName: `${applicant.firstName} ${applicant.lastName}`,
-            reason: isAssignedToManager ? 'Assigned to manager' : 'Same department',
-            applicantDept: applicant.departmentId,
-            managerDept: currentUser.departmentId,
-            assignedManagerId: leave.managerId
-          });
+        // For Level 1 users (Admin), also show leaves from Level 2 users
+        if (currentUserRoleLevel === 1) {
+          const shouldShow = isAssignedToUser;
+          
+          if (shouldShow) {
+            console.log('Including leave for Level 1 approver:', {
+              leaveId: leave.id,
+              applicantName: `${applicant.firstName} ${applicant.lastName}`,
+              reason: 'Assigned to this Level 1 user',
+              assignedManagerId: leave.managerId
+            });
+          }
+          
+          return shouldShow;
+        } else if (currentUserAccessLevel === 'Manager') {
+          // For managers, filter to show leaves assigned to them or in same department
+          const inSameDepartment = currentUser.departmentId && applicant.departmentId === currentUser.departmentId;
+          const shouldShow = isAssignedToUser || inSameDepartment;
+          
+          if (shouldShow) {
+            console.log('Including leave for Manager:', {
+              leaveId: leave.id,
+              applicantName: `${applicant.firstName} ${applicant.lastName}`,
+              reason: isAssignedToUser ? 'Assigned to manager' : 'Same department',
+              applicantDept: applicant.departmentId,
+              managerDept: currentUser.departmentId,
+              assignedManagerId: leave.managerId
+            });
+          }
+          
+          return shouldShow;
         }
         
-        return shouldShow;
+        return false;
       });
 
-      console.log('Pending leaves returned to manager:', pendingLeaves.length);
+      console.log('Pending leaves returned:', pendingLeaves.length);
       res.json(pendingLeaves);
     } catch (error) {
       console.error('Failed to fetch pending leaves:', error);
@@ -961,18 +1013,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId!;
       const { userId: _, ...leaveData } = req.body; // Remove userId from body
 
-      // Get employee's department and find department manager
+      // Get employee's role and department
       const employee = await storage.getUserProfile(userId);
       let managerId = null;
 
       console.log('Employee applying for leave:', {
         userId,
         departmentId: employee?.departmentId,
-        directManagerId: employee?.managerId
+        directManagerId: employee?.managerId,
+        roleId: employee?.roleId
       });
 
-      if (employee?.departmentId) {
-        // Find all managers in the employee's department
+      // Get the employee's role to check their level
+      let employeeRole = null;
+      if (employee?.roleId) {
+        employeeRole = await storage.getUserRole(employee.roleId);
+        console.log('Employee role:', {
+          roleName: employeeRole?.roleName,
+          accessLevel: employeeRole?.accessLevel,
+          level: employeeRole?.level
+        });
+      }
+
+      // If employee is Level 2 (Manager), assign to Level 1 (Admin)
+      if (employeeRole && employeeRole.level === 2) {
+        const allEmployees = await storage.getAllUserProfiles();
+        
+        // Find a Level 1 user (Admin) to approve the leave
+        for (const emp of allEmployees) {
+          if (emp.roleId && emp.id !== userId) {
+            const role = await storage.getUserRole(emp.roleId);
+            if (role && role.level === 1) {
+              managerId = emp.id;
+              console.log('Found Level 1 approver for Level 2 employee:', {
+                managerId: emp.id,
+                managerName: `${emp.firstName} ${emp.lastName}`,
+                managerRole: role.roleName
+              });
+              break;
+            }
+          }
+        }
+      } else if (employee?.departmentId) {
+        // For other employees, find manager in the same department
         const allEmployees = await storage.getAllUserProfiles();
         
         for (const emp of allEmployees) {
