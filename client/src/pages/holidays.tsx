@@ -44,6 +44,27 @@ export default function Holidays() {
     queryKey: ["/api/holidays"],
   });
 
+  const handleDeleteHoliday = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this holiday?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/holidays/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete holiday');
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/holidays"] });
+    } catch (error) {
+      console.error('Error deleting holiday:', error);
+      alert('Failed to delete holiday');
+    }
+  };
+
   // Filter holidays by selected year and type
   const holidaysForYear = holidays?.filter((holiday) => {
     const holidayYear = new Date(holiday.fromDate).getFullYear();
@@ -221,6 +242,7 @@ export default function Holidays() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                onClick={() => handleDeleteHoliday(holiday.id)}
                                 data-testid={`button-delete-${holiday.id}`}
                               >
                                 <Trash2 className="h-4 w-4" />
