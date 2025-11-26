@@ -181,19 +181,19 @@ export default function Leaves() {
     if (currentUser && currentUser.id === userId) {
       return `${currentUser.firstName} ${currentUser.lastName}`;
     }
-    
+
     // If we don't have access to employees list (regular employee), just show "You" or "Employee"
     if (!employees || employees.length === 0) {
       return currentUser && currentUser.id === userId ? "You" : "Employee";
     }
-    
+
     if (isLoadingEmployees) return "Loading...";
-    
+
     const employee = employees.find(emp => emp.id === userId);
     if (!employee) {
       return "Employee";
     }
-    
+
     return `${employee.firstName} ${employee.lastName}`;
   };
 
@@ -373,7 +373,6 @@ export default function Leaves() {
                   <TableHead>Reason</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Manager Comments</TableHead>
-                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -389,7 +388,6 @@ export default function Leaves() {
                         <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       </TableRow>
                     ))}
                   </>
@@ -404,41 +402,11 @@ export default function Leaves() {
                       <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
                       <TableCell>{getStatusBadge(leave.status)}</TableCell>
                       <TableCell>{leave.managerComments || '-'}</TableCell>
-                      <TableCell>
-                        {currentUser?.accessLevel === 'Manager' && leave.status === 'Open' && leave.userId !== (currentUser.id || currentUser.userId) ? (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedLeave(leave);
-                                setIsApproveDialogOpen(true);
-                              }}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedLeave(leave);
-                                setIsRejectDialogOpen(true);
-                              }}
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Reject
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">View Only</span>
-                        )}
-                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No leave applications found
                     </TableCell>
                   </TableRow>

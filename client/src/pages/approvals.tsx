@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -10,9 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -20,14 +19,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, XCircle, Check, X } from "lucide-react";
-import { Leave } from "@shared/schema";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Approvals() {
-  const [selectedLeave, setSelectedLeave] = useState<Leave | null>(null);
+  const [selectedLeave, setSelectedLeave] = useState<any>(null);
+  const [selectedAttendance, setSelectedAttendance] = useState<any>(null);
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [isAttendanceApproveDialogOpen, setIsAttendanceApproveDialogOpen] = useState(false);
+  const [isAttendanceRejectDialogOpen, setIsAttendanceRejectDialogOpen] = useState(false);
   const [comments, setComments] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,17 +39,23 @@ export default function Approvals() {
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: pendingLeaves, isLoading } = useQuery<Leave[]>({
+  const { data: pendingLeaves, isLoading } = useQuery<any[]>({
     queryKey: ["/api/approvals/leaves"],
-    enabled: !!currentUser && (currentUser?.accessLevel === 'Manager' || currentUser?.accessLevel === 'Admin'),
+    enabled: currentUser?.accessLevel === 'Manager' || currentUser?.accessLevel === 'Admin',
   });
 
-  const { data: employees } = useQuery<any[]>({
-    queryKey: ["/api/employees"],
+  const { data: pendingAttendance, isLoading: isLoadingAttendance } = useQuery<any[]>({
+    queryKey: ["/api/attendance"],
+    enabled: currentUser?.accessLevel === 'Manager' || currentUser?.accessLevel === 'Admin',
   });
 
   const { data: leaveTypes } = useQuery<any[]>({
     queryKey: ["/api/leave-types"],
+  });
+
+  const { data: employees } = useQuery<any[]>({
+    queryKey: ["/api/employees"],
+    enabled: currentUser?.accessLevel !== 'Employee',
   });
 
   const getLeaveTypeName = (leaveTypeId: string | null) => {
@@ -54,43 +64,40 @@ export default function Approvals() {
     return leaveType ? leaveType.name : leaveTypeId;
   };
 
-  // Check if user has permission to view approvals - managers and admins
-  const hasApprovalAccess = currentUser && (currentUser.accessLevel === 'Manager' || currentUser.accessLevel === 'Admin');
-
-  if (!hasApprovalAccess) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground">You do not have permission to view this page.</p>
-        </div>
-      </div>
-    );
-  }
-
   const getEmployeeName = (userId: string) => {
-    if (!employees) return 'Loading...';
+    if (currentUser && currentUser.id === userId) {
+      return `${currentUser.firstName} ${currentUser.lastName}`;
+    }
+    
+    if (!employees || employees.length === 0) {
+      return "Employee";
+    }
+    
     const employee = employees.find(emp => emp.id === userId);
-    return employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee';
+    if (!employee) {
+      return "Employee";
+    }
+    
+    return `${employee.firstName} ${employee.lastName}`;
   };
 
-  const handleApprove = async () => {
+  const handleApproveLeave = async () => {
     if (!selectedLeave) return;
-
+    
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/leaves/${selectedLeave.id}/approve`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ comments }),
       });
-
+      
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to approve leave');
+        throw new Error(errorData.message || "Failed to approve leave");
       }
-
+      
       queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
       queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
       setIsApproveDialogOpen(false);
@@ -105,26 +112,23 @@ export default function Approvals() {
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedLeave || !comments.trim()) {
-      alert('Please provide a reason for rejection');
-      return;
-    }
-
+  const handleRejectLeave = async () => {
+    if (!selectedLeave || !comments.trim()) return;
+    
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/leaves/${selectedLeave.id}/reject`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ comments }),
       });
-
+      
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to reject leave');
+        throw new Error(errorData.message || "Failed to reject leave");
       }
-
+      
       queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
       queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
       setIsRejectDialogOpen(false);
@@ -139,14 +143,79 @@ export default function Approvals() {
     }
   };
 
+  const handleApproveAttendance = async () => {
+    if (!selectedAttendance) return;
+    
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/attendance/${selectedAttendance.id}/regularize/approve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ comments }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to approve regularization");
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      setIsAttendanceApproveDialogOpen(false);
+      setComments("");
+      setSelectedAttendance(null);
+      alert('Attendance regularization approved successfully!');
+    } catch (error: any) {
+      console.error('Failed to approve regularization:', error);
+      alert(error.message || 'Failed to approve regularization. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectAttendance = async () => {
+    if (!selectedAttendance || !comments.trim()) return;
+    
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/attendance/${selectedAttendance.id}/regularize/reject`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ comments }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to reject regularization");
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      setIsAttendanceRejectDialogOpen(false);
+      setComments("");
+      setSelectedAttendance(null);
+      alert('Attendance regularization rejected successfully!');
+    } catch (error: any) {
+      console.error('Failed to reject regularization:', error);
+      alert(error.message || 'Failed to reject regularization. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       "Open": "secondary",
+      "Pending": "secondary",
       "Approved": "default",
       "Rejected": "destructive",
     };
     return <Badge variant={variants[status] || "secondary"}>{status}</Badge>;
   };
+
+  const pendingRegularizations = pendingAttendance?.filter(
+    att => att.regularizationRequested && att.regularizationStatus === 'Pending'
+  ) || [];
 
   return (
     <div className="space-y-6">
@@ -154,98 +223,196 @@ export default function Approvals() {
         <div>
           <h1 className="text-3xl font-semibold mb-1">Approvals</h1>
           <p className="text-muted-foreground">
-            Review and approve pending leave applications from your department
+            Review and approve pending leave applications and attendance regularizations
           </p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Pending Leave Applications</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Leave Type</TableHead>
-                  <TableHead>From Date</TableHead>
-                  <TableHead>To Date</TableHead>
-                  <TableHead>Days</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <TableRow key={i}>
-                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-                        <TableCell><Skeleton className="h-8 w-24" /></TableCell>
-                      </TableRow>
-                    ))}
-                  </>
-                ) : pendingLeaves && pendingLeaves.length > 0 ? (
-                  pendingLeaves.map((leave) => (
-                    <TableRow key={leave.id}>
-                      <TableCell>{getEmployeeName(leave.userId)}</TableCell>
-                      <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
-                      <TableCell>{leave.fromDate}</TableCell>
-                      <TableCell>{leave.toDate}</TableCell>
-                      <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
-                      <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
-                      <TableCell>{getStatusBadge(leave.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => {
-                              setSelectedLeave(leave);
-                              setIsApproveDialogOpen(true);
-                            }}
-                          >
-                            <Check className="h-4 w-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => {
-                              setSelectedLeave(leave);
-                              setIsRejectDialogOpen(true);
-                            }}
-                          >
-                            <X className="h-4 w-4 mr-1" />
-                            Reject
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No pending leave applications
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="leaves" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="leaves">
+            Leave Requests ({pendingLeaves?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="attendance">
+            Attendance Regularizations ({pendingRegularizations.length})
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Approve Dialog */}
+        <TabsContent value="leaves" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Leave Applications</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Leave Type</TableHead>
+                      <TableHead>From Date</TableHead>
+                      <TableHead>To Date</TableHead>
+                      <TableHead>Days</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <TableRow key={i}>
+                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                            <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    ) : pendingLeaves && pendingLeaves.length > 0 ? (
+                      pendingLeaves.map((leave) => (
+                        <TableRow key={leave.id}>
+                          <TableCell>{getEmployeeName(leave.userId)}</TableCell>
+                          <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
+                          <TableCell>{leave.fromDate}</TableCell>
+                          <TableCell>{leave.toDate}</TableCell>
+                          <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
+                          <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
+                          <TableCell>{getStatusBadge(leave.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => {
+                                  setSelectedLeave(leave);
+                                  setIsApproveDialogOpen(true);
+                                }}
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  setSelectedLeave(leave);
+                                  setIsRejectDialogOpen(true);
+                                }}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No pending leave applications
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="attendance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Attendance Regularizations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Check In</TableHead>
+                      <TableHead>Check Out</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoadingAttendance ? (
+                      <>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <TableRow key={i}>
+                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                            <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    ) : pendingRegularizations.length > 0 ? (
+                      pendingRegularizations.map((attendance) => (
+                        <TableRow key={attendance.id}>
+                          <TableCell>{getEmployeeName(attendance.userId)}</TableCell>
+                          <TableCell>{attendance.attendanceDate}</TableCell>
+                          <TableCell>{attendance.checkIn ? new Date(attendance.checkIn).toLocaleTimeString() : '-'}</TableCell>
+                          <TableCell>{attendance.checkOut ? new Date(attendance.checkOut).toLocaleTimeString() : '-'}</TableCell>
+                          <TableCell className="max-w-xs truncate">{attendance.regularizationReason}</TableCell>
+                          <TableCell>{getStatusBadge(attendance.regularizationStatus)}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => {
+                                  setSelectedAttendance(attendance);
+                                  setIsAttendanceApproveDialogOpen(true);
+                                }}
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  setSelectedAttendance(attendance);
+                                  setIsAttendanceRejectDialogOpen(true);
+                                }}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          No pending attendance regularizations
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Leave Approve Dialog */}
       <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -272,7 +439,7 @@ export default function Approvals() {
               >
                 Cancel
               </Button>
-              <Button onClick={handleApprove} disabled={isSubmitting}>
+              <Button onClick={handleApproveLeave} disabled={isSubmitting}>
                 {isSubmitting ? "Approving..." : "Approve"}
               </Button>
             </div>
@@ -280,7 +447,7 @@ export default function Approvals() {
         </DialogContent>
       </Dialog>
 
-      {/* Reject Dialog */}
+      {/* Leave Reject Dialog */}
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -310,7 +477,82 @@ export default function Approvals() {
               </Button>
               <Button
                 variant="destructive"
-                onClick={handleReject}
+                onClick={handleRejectLeave}
+                disabled={isSubmitting || !comments.trim()}
+              >
+                {isSubmitting ? "Rejecting..." : "Reject"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Attendance Approve Dialog */}
+      <Dialog open={isAttendanceApproveDialogOpen} onOpenChange={setIsAttendanceApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Attendance Regularization</DialogTitle>
+            <DialogDescription>
+              Add optional comments for the employee
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Comments (optional)"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+            />
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsAttendanceApproveDialogOpen(false);
+                  setComments("");
+                  setSelectedAttendance(null);
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleApproveAttendance} disabled={isSubmitting}>
+                {isSubmitting ? "Approving..." : "Approve"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Attendance Reject Dialog */}
+      <Dialog open={isAttendanceRejectDialogOpen} onOpenChange={setIsAttendanceRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Attendance Regularization</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejection
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Reason for rejection *"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              required
+            />
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsAttendanceRejectDialogOpen(false);
+                  setComments("");
+                  setSelectedAttendance(null);
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleRejectAttendance}
                 disabled={isSubmitting || !comments.trim()}
               >
                 {isSubmitting ? "Rejecting..." : "Reject"}
