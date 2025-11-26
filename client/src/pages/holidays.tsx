@@ -247,8 +247,22 @@ export default function Holidays() {
                               {holiday.type}
                             </span>
                           </TableCell>
-                          <TableCell>{holiday.fromDate}</TableCell>
-                          <TableCell>{holiday.toDate}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span>{holiday.fromDate}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(holiday.fromDate).toLocaleDateString('en-US', { weekday: 'long' })}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span>{holiday.toDate}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(holiday.toDate).toLocaleDateString('en-US', { weekday: 'long' })}
+                              </span>
+                            </div>
+                          </TableCell>
                           <TableCell>{holiday.totalHolidays}</TableCell>
                           {isSuperAdmin && (
                             <TableCell className="text-right">
