@@ -1036,7 +1036,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Show leaves that are assigned to this user
         const isAssignedToUser = leave.managerId === userId;
 
-        // For Level 1 users (Admin), also show leaves from Level 2 users
+        // For Admin access level users, show all pending leaves (they can approve everything)
+        if (currentUserAccessLevel === 'Admin') {
+          console.log('Including leave for Admin approver:', {
+            leaveId: leave.id,
+            applicantName: `${applicant.firstName} ${applicant.lastName}`,
+            assignedManagerId: leave.managerId,
+            isAssignedToAdmin: isAssignedToUser
+          });
+          return true;
+        }
+
+        // For Level 1 users (who are not Admin access level), show leaves assigned to them
         if (currentUserRoleLevel === 1) {
           const shouldShow = isAssignedToUser;
 
