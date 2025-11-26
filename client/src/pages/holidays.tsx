@@ -66,12 +66,15 @@ export default function Holidays() {
     }
   };
 
-  // Filter holidays by selected year and type
+  // Filter holidays by selected year and type, then sort by date
   const holidaysForYear = holidays?.filter((holiday) => {
     const holidayYear = new Date(holiday.fromDate).getFullYear();
     const yearMatch = holidayYear === parseInt(selectedYear);
     const typeMatch = selectedType === "All" || holiday.type === selectedType;
     return yearMatch && typeMatch;
+  }).sort((a, b) => {
+    // Sort by fromDate in ascending order (earliest first)
+    return new Date(a.fromDate).getTime() - new Date(b.fromDate).getTime();
   }) || [];
 
   // Get unique years from holidays, plus current year and next 2 years
@@ -101,7 +104,7 @@ export default function Holidays() {
     }
   });
 
-  // Get holidays for selected month (ensure no duplicates)
+  // Get holidays for selected month (ensure no duplicates) and sort by date
   const holidaysForMonth = Array.from(
     new Map(
       holidaysForYear
@@ -115,6 +118,7 @@ export default function Holidays() {
           // Include holiday if it starts or ends in the selected month
           return fromDateMonth === selectedMonth || toDateMonth === selectedMonth;
         })
+        .sort((a, b) => new Date(a.fromDate).getTime() - new Date(b.fromDate).getTime())
         .map((holiday) => [holiday.id, holiday])
     ).values()
   );
@@ -213,6 +217,15 @@ export default function Holidays() {
                       Array.from(
                         new Map(
                           (selectedType === "All" ? holidays : holidays.filter(h => h.type === selectedType))
+                            .sort((a, b) => {
+                              // Sort by year first, then by date
+                              const yearA = new Date(a.fromDate).getFullYear();
+                              const yearB = new Date(b.fromDate).getFullYear();
+                              if (yearA !== yearB) {
+                                return yearA - yearB;
+                              }
+                              return new Date(a.fromDate).getTime() - new Date(b.fromDate).getTime();
+                            })
                             .map((holiday) => [holiday.id, holiday])
                         ).values()
                       ).map((holiday) => (
@@ -452,6 +465,7 @@ export default function Holidays() {
                             const holidayMonth = new Date(holiday.fromDate).getMonth();
                             return holidayMonth === index;
                           })
+                          .sort((a, b) => new Date(a.fromDate).getTime() - new Date(b.fromDate).getTime())
                           .map((holiday) => [holiday.id, holiday])
                       ).values()
                     );
