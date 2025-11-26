@@ -1205,6 +1205,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Check if the leave dates overlap with any holidays
+      const allHolidays = await storage.getAllHolidays();
+      const conflictingHolidays: string[] = [];
+
+      for (let date = new Date(fromDate); date <= toDate; date.setDate(date.getDate() + 1)) {
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Check if this date falls within any holiday period
+        for (const holiday of allHolidays) {
+          const holidayFrom = new Date(holiday.fromDate);
+          const holidayTo = new Date(holiday.toDate);
+          const checkDate = new Date(dateStr);
+
+          if (checkDate >= holidayFrom && checkDate <= holidayTo) {
+            conflictingHolidays.push(`${dateStr} (${holiday.name})`);
+            break; // No need to check other holidays for this date
+          }
+        }
+      }
+
+      if (conflictingHolidays.length > 0) {
+        return res.status(400).json({
+          message: `Cannot apply for leave on holidays. The following dates are holidays: ${conflictingHolidays.join(', ')}. Please exclude these dates from your leave application.`
+        });
+      }
+
       // Calculate requested leave days
       const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const requestedDays = leaveData.halfDay ? 0.5 : daysDiff;
