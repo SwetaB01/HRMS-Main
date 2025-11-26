@@ -60,12 +60,18 @@ export default function Holidays() {
   const holidayDates = new Set<string>();
   
   holidaysForYear.forEach((holiday) => {
-    const fromDate = new Date(holiday.fromDate);
-    const toDate = new Date(holiday.toDate);
+    // Parse dates in local timezone to avoid timezone shifts
+    const [fromYear, fromMonth, fromDay] = holiday.fromDate.split('-').map(Number);
+    const [toYear, toMonth, toDay] = holiday.toDate.split('-').map(Number);
+    const fromDate = new Date(fromYear, fromMonth - 1, fromDay);
+    const toDate = new Date(toYear, toMonth - 1, toDay);
     
     // Add all dates in the holiday range to the set
     for (let d = new Date(fromDate); d <= toDate; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       holidayDates.add(dateStr);
     }
   });
@@ -75,13 +81,14 @@ export default function Holidays() {
     new Map(
       holidaysForYear
         .filter((holiday) => {
-          const fromDate = new Date(holiday.fromDate);
-          const toDate = new Date(holiday.toDate);
-          const fromMonth = fromDate.getMonth();
-          const toMonth = toDate.getMonth();
+          // Parse dates in local timezone to avoid timezone shifts
+          const [fromYear, fromMonth, fromDay] = holiday.fromDate.split('-').map(Number);
+          const [toYear, toMonth, toDay] = holiday.toDate.split('-').map(Number);
+          const fromDateMonth = fromMonth - 1; // JavaScript months are 0-indexed
+          const toDateMonth = toMonth - 1;
           
           // Include holiday if it starts or ends in the selected month
-          return fromMonth === selectedMonth || toMonth === selectedMonth;
+          return fromDateMonth === selectedMonth || toDateMonth === selectedMonth;
         })
         .map((holiday) => [holiday.id, holiday])
     ).values()
@@ -250,7 +257,11 @@ export default function Holidays() {
                   }}
                   modifiers={{
                     holiday: (date) => {
-                      const dateStr = date.toISOString().split('T')[0];
+                      // Format date in local timezone to match holiday dates
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const day = String(date.getDate()).padStart(2, '0');
+                      const dateStr = `${year}-${month}-${day}`;
                       return holidayDates.has(dateStr);
                     }
                   }}
