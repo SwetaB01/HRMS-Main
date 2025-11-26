@@ -87,15 +87,28 @@ function App() {
 
     const user = await response.json();
     console.log('User logged in:', user);
-    setCurrentUser(user);
-    setIsAuthenticated(true);
+    
+    // Clear any cached data
+    queryClient.clear();
     localStorage.setItem('currentUser', JSON.stringify(user));
+    
+    // Force a full page refresh to clear all state
+    window.location.href = '/';
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setIsAuthenticated(false);
+  const handleLogout = async () => {
+    // Call logout endpoint to clear server session
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    
+    // Clear all cached data
+    queryClient.clear();
     localStorage.removeItem('currentUser');
+    
+    // Force a full page refresh to clear all state
+    window.location.href = '/';
   };
 
   if (!isAuthenticated) {
