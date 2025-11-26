@@ -49,9 +49,11 @@ export default function Holidays() {
     return holidayYear === parseInt(selectedYear);
   }) || [];
 
-  // Get unique years from holidays
+  // Get unique years from holidays, plus current year and next 2 years
+  const currentYear = new Date().getFullYear();
+  const yearsFromHolidays = holidays?.map(h => new Date(h.fromDate).getFullYear()) || [];
   const availableYears = Array.from(
-    new Set(holidays?.map(h => new Date(h.fromDate).getFullYear()) || [])
+    new Set([...yearsFromHolidays, currentYear, currentYear + 1, currentYear + 2])
   ).sort();
 
   // Create a map of dates that have holidays
