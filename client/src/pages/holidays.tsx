@@ -56,29 +56,29 @@ export default function Holidays() {
     new Set([...yearsFromHolidays, currentYear, currentYear + 1, currentYear + 2])
   ).sort();
 
-  // Create a map of dates that have holidays
+  // Create a set of dates that have holidays (for calendar highlighting)
   const holidayDates = new Set<string>();
-  const holidaysByDate = new Map<string, Holiday[]>();
   
   holidaysForYear.forEach((holiday) => {
     const fromDate = new Date(holiday.fromDate);
     const toDate = new Date(holiday.toDate);
     
+    // Add all dates in the holiday range to the set
     for (let d = new Date(fromDate); d <= toDate; d.setDate(d.getDate() + 1)) {
       const dateStr = d.toISOString().split('T')[0];
       holidayDates.add(dateStr);
-      
-      if (!holidaysByDate.has(dateStr)) {
-        holidaysByDate.set(dateStr, []);
-      }
-      holidaysByDate.get(dateStr)?.push(holiday);
     }
   });
 
-  // Get holidays for selected month
+  // Get holidays for selected month (ensure no duplicates)
   const holidaysForMonth = holidaysForYear.filter((holiday) => {
-    const holidayMonth = new Date(holiday.fromDate).getMonth();
-    return holidayMonth === selectedMonth;
+    const fromDate = new Date(holiday.fromDate);
+    const toDate = new Date(holiday.toDate);
+    const fromMonth = fromDate.getMonth();
+    const toMonth = toDate.getMonth();
+    
+    // Include holiday if it starts or ends in the selected month
+    return fromMonth === selectedMonth || toMonth === selectedMonth;
   });
 
   const monthNames = [
