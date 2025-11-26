@@ -38,15 +38,18 @@ export default function Holidays() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedType, setSelectedType] = useState<string>("All");
 
   const { data: holidays, isLoading } = useQuery<Holiday[]>({
     queryKey: ["/api/holidays"],
   });
 
-  // Filter holidays by selected year
+  // Filter holidays by selected year and type
   const holidaysForYear = holidays?.filter((holiday) => {
     const holidayYear = new Date(holiday.fromDate).getFullYear();
-    return holidayYear === parseInt(selectedYear);
+    const yearMatch = holidayYear === parseInt(selectedYear);
+    const typeMatch = selectedType === "All" || holiday.type === selectedType;
+    return yearMatch && typeMatch;
   }) || [];
 
   // Get unique years from holidays, plus current year and next 2 years
@@ -140,8 +143,20 @@ export default function Holidays() {
 
         <TabsContent value="list">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle>Holiday Calendar</CardTitle>
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Types</SelectItem>
+                  <SelectItem value="National">National</SelectItem>
+                  <SelectItem value="Regional">Regional</SelectItem>
+                  <SelectItem value="Optional">Optional</SelectItem>
+                  <SelectItem value="Weekend Off">Weekend Off</SelectItem>
+                </SelectContent>
+              </Select>
             </CardHeader>
             <CardContent>
               <div className="border rounded-md">
@@ -149,6 +164,7 @@ export default function Holidays() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Holiday Name</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>From Date</TableHead>
                       <TableHead>To Date</TableHead>
                       <TableHead>Total Days</TableHead>
@@ -161,6 +177,7 @@ export default function Holidays() {
                         {[1, 2, 3, 4, 5].map((i) => (
                           <TableRow key={i}>
                             <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                             <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                             <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                             <TableCell><Skeleton className="h-4 w-12" /></TableCell>
@@ -178,6 +195,16 @@ export default function Holidays() {
                       ).map((holiday) => (
                         <TableRow key={holiday.id} data-testid={`row-holiday-${holiday.id}`}>
                           <TableCell className="font-medium">{holiday.name}</TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              holiday.type === 'National' ? 'bg-blue-100 text-blue-800' :
+                              holiday.type === 'Regional' ? 'bg-green-100 text-green-800' :
+                              holiday.type === 'Optional' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {holiday.type}
+                            </span>
+                          </TableCell>
                           <TableCell>{holiday.fromDate}</TableCell>
                           <TableCell>{holiday.toDate}</TableCell>
                           <TableCell>{holiday.totalHolidays}</TableCell>
@@ -203,7 +230,7 @@ export default function Holidays() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           No holidays configured
                         </TableCell>
                       </TableRow>
@@ -220,6 +247,18 @@ export default function Holidays() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle>Monthly Holiday Calendar</CardTitle>
               <div className="flex gap-2">
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Types</SelectItem>
+                    <SelectItem value="National">National</SelectItem>
+                    <SelectItem value="Regional">Regional</SelectItem>
+                    <SelectItem value="Optional">Optional</SelectItem>
+                    <SelectItem value="Weekend Off">Weekend Off</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />
@@ -292,8 +331,18 @@ export default function Holidays() {
                           className="p-4 border rounded-lg hover:bg-accent transition-colors"
                         >
                           <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-medium">{holiday.name}</h4>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium">{holiday.name}</h4>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  holiday.type === 'National' ? 'bg-blue-100 text-blue-800' :
+                                  holiday.type === 'Regional' ? 'bg-green-100 text-green-800' :
+                                  holiday.type === 'Optional' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {holiday.type}
+                                </span>
+                              </div>
                               <p className="text-sm text-muted-foreground mt-1">
                                 {holiday.fromDate === holiday.toDate
                                   ? new Date(holiday.fromDate).toLocaleDateString('en-US', { 
@@ -334,18 +383,32 @@ export default function Holidays() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle>Yearly Holiday Overview</CardTitle>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableYears.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Types</SelectItem>
+                    <SelectItem value="National">National</SelectItem>
+                    <SelectItem value="Regional">Regional</SelectItem>
+                    <SelectItem value="Optional">Optional</SelectItem>
+                    <SelectItem value="Weekend Off">Weekend Off</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableYears.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -393,7 +456,17 @@ export default function Holidays() {
                                   key={holiday.id}
                                   className="text-sm p-2 bg-accent/50 rounded"
                                 >
-                                  <div className="font-medium">{holiday.name}</div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="font-medium flex-1">{holiday.name}</div>
+                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                                      holiday.type === 'National' ? 'bg-blue-100 text-blue-800' :
+                                      holiday.type === 'Regional' ? 'bg-green-100 text-green-800' :
+                                      holiday.type === 'Optional' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {holiday.type.charAt(0)}
+                                    </span>
+                                  </div>
                                   <div className="text-xs text-muted-foreground mt-1">
                                     {new Date(holiday.fromDate).toLocaleDateString('en-US', { 
                                       month: 'short', 

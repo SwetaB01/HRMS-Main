@@ -162,6 +162,7 @@ export const holidays = pgTable("holidays", {
   fromDate: date("from_date").notNull(),
   toDate: date("to_date").notNull(),
   totalHolidays: integer("total_holidays").notNull(),
+  type: varchar("type").notNull().default("National"),
 });
 
 export const insertHolidaySchema = createInsertSchema(holidays).omit({ id: true });

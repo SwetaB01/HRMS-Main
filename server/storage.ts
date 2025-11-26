@@ -470,7 +470,7 @@ export class MemStorage implements IStorage {
 
   async createHoliday(holiday: InsertHoliday): Promise<Holiday> {
     const id = `holiday-${Date.now()}`;
-    const newHoliday: Holiday = { ...holiday, id };
+    const newHoliday: Holiday = { ...holiday, id, type: holiday.type || "National" };
     this.holidays.set(id, newHoliday);
     return newHoliday;
   }

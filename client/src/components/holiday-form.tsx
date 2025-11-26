@@ -11,6 +11,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { queryClient } from "@/lib/queryClient";
 import { useState } from "react";
 
@@ -19,6 +26,7 @@ const holidayFormSchema = z.object({
   fromDate: z.string().min(1, "From date is required"),
   toDate: z.string().min(1, "To date is required"),
   totalHolidays: z.string().min(1, "Total holidays is required"),
+  type: z.string().min(1, "Holiday type is required"),
 });
 
 type HolidayFormData = z.infer<typeof holidayFormSchema>;
@@ -37,6 +45,7 @@ export function HolidayForm({ onSuccess }: HolidayFormProps) {
       fromDate: "",
       toDate: "",
       totalHolidays: "1",
+      type: "National",
     },
   });
 
@@ -131,6 +140,30 @@ export function HolidayForm({ onSuccess }: HolidayFormProps) {
                   {...field}
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="type"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Holiday Type *</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-holiday-type">
+                    <SelectValue placeholder="Select holiday type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="National">National</SelectItem>
+                  <SelectItem value="Regional">Regional</SelectItem>
+                  <SelectItem value="Optional">Optional</SelectItem>
+                  <SelectItem value="Weekend Off">Weekend Off</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
