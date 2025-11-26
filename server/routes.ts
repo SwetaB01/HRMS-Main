@@ -692,7 +692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/attendance/:id", requireManagerOrHROrAdmin, async (req, res) => {
+  app.delete("/api/attendance/:id", requireAuth, async (req, res) => {
     try {
       const currentUserId = req.session.userId!;
       const userRole = req.session.userRole;
@@ -712,7 +712,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      // Check if there's an approved leave for this date
+      // Allow deletion of "On Leave" records without restriction
+      // This allows employees to delete attendance created by approved leaves
+      if (attendance.status === 'On Leave') {
+        const deleted = await storage.deleteAttendance(id);
+        if (!deleted) {
+          return res.status(500).json({ message: "Failed to delete attendance record" });
+        }
+        res.status(204).send();
+        return;
+      }
+
+      // For other statuses, check if there's an approved leave for this date
       const allLeaves = await storage.getLeavesByUser(attendance.userId);
       const approvedLeave = allLeaves.find(leave => {
         if (leave.status !== 'Approved') return false;
@@ -722,15 +733,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return attendDate >= fromDate && attendDate <= toDate;
       });
 
-      if (approvedLeave && attendance.status !== 'On Leave') {
+      if (approvedLeave) {
         return res.status(400).json({ 
-          message: "Cannot delete this attendance record. You have an approved leave for this date." 
+          message: "Cannot delete this attendance record. You have an approved leave for this date. Please reject or cancel the leave first." 
         });
       }
 
-      // Delete the attendance record (implementation depends on storage)
-      // For now, we'll just update it to a deleted status or actually delete it
-      // Assuming storage has a delete method
+      // Delete the attendance record
       const deleted = await storage.deleteAttendance(id);
 
       if (!deleted) {
