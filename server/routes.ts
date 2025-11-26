@@ -1020,6 +1020,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return false;
         }
 
+        // Never show user's own leave requests in approvals
+        if (leave.userId === userId) {
+          return false;
+        }
+
         // Find the employee who applied for leave
         const applicant = allEmployees.find(emp => emp.id === leave.userId);
 
@@ -1046,7 +1051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           return shouldShow;
         } else if (currentUserAccessLevel === 'Manager') {
-          // For managers, filter to show leaves assigned to them or in same department
+          // For managers, filter to show leaves assigned to them or in same department (but not their own)
           const inSameDepartment = currentUser.departmentId && applicant.departmentId === currentUser.departmentId;
           const shouldShow = isAssignedToUser || inSameDepartment;
 
