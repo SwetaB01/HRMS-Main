@@ -54,6 +54,7 @@ function App() {
         });
         if (response.ok) {
           const user = await response.json();
+          console.log('User authenticated:', user);
           setCurrentUser(user);
           setIsAuthenticated(true);
           localStorage.setItem('currentUser', JSON.stringify(user));
@@ -85,6 +86,7 @@ function App() {
     }
 
     const user = await response.json();
+    console.log('User logged in:', user);
     setCurrentUser(user);
     setIsAuthenticated(true);
     localStorage.setItem('currentUser', JSON.stringify(user));

@@ -89,7 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const requireAccountantOrAdmin = allowRoles('Accountant', 'Admin');
 
   // Get current user profile
-  app.get("/api/auth/me", async (req, res) => {
+  app.get("/api/auth/me", requireAuth, async (req, res) => {
     try {
       if (!req.session.userId) {
         return res.status(401).json({ message: "Not authenticated" });
@@ -390,7 +390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedEmployee = await storage.assignManager(employeeId, managerId);
-      
+
       if (!updatedEmployee) {
         return res.status(404).json({ message: "Failed to assign manager" });
       }
@@ -435,10 +435,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const subordinates = await storage.getSubordinates(managerId);
-      
+
       // Remove passwordHash from all subordinates
       const sanitizedSubordinates = subordinates.map(({ passwordHash, ...employee }) => employee);
-      
+
       res.json(sanitizedSubordinates);
     } catch (error: any) {
       console.error('Get subordinates error:', error);
@@ -537,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentUserId = req.session.userId!;
       let userRole = req.session.userRole;
       const { userId: targetUserId, attendanceDate, status, checkIn, checkOut } = req.body;
-      
+
       // Fallback: fetch role from storage if not in session (for backward compatibility with existing sessions)
       if (!userRole) {
         const user = await storage.getUserProfile(currentUserId);
@@ -553,7 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       // Managers, HR, and Admins can create attendance for team members; employees only for themselves
       const canManageTeam = ['Admin', 'HR', 'Manager'].includes(userRole?.accessLevel || '');
       const effectiveUserId = (canManageTeam && targetUserId) ? targetUserId : currentUserId;
@@ -707,7 +707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Managers, HR, and Admins can delete team attendance; employees can only delete their own
       const canDelete = attendance.userId === currentUserId || 
                        ['Admin', 'HR', 'Manager'].includes(userRole?.accessLevel || '');
-      
+
       if (!canDelete) {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -863,7 +863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let userRole = req.session.userRole;
       let currentUserRoleLevel = null;
-      
+
       // Fallback: fetch role from storage if not in session
       if (!userRole && currentUser.roleId) {
         const role = await storage.getUserRole(currentUser.roleId);
@@ -884,13 +884,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Managers, HR, and Admins see all leaves from their team/department
       const canViewTeamLeaves = ['Admin', 'HR', 'Manager'].includes(userRole?.accessLevel || '');
-      
+
       let leaves;
       if (canViewTeamLeaves) {
         // Get all leaves
         const allLeaves = await storage.getAllLeaves();
         const allEmployees = await storage.getAllUserProfiles();
-        
+
         // Admin access level users see ALL leaves
         if (userRole?.accessLevel === 'Admin') {
           leaves = allLeaves;
@@ -904,12 +904,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (leave.userId === userId) {
               return true;
             }
-            
+
             // Include leaves assigned to this manager
             if (leave.managerId === userId) {
               return true;
             }
-            
+
             // Include leaves from employees in same department
             if (currentUser.departmentId) {
               const applicant = allEmployees.find(emp => emp.id === leave.userId);
@@ -917,7 +917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 return true;
               }
             }
-            
+
             return false;
           });
         } else {
@@ -940,14 +940,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.userId!;
       const currentUser = await storage.getUserProfile(userId);
-      
+
       console.log('User viewing approvals:', {
         userId: userId,
         userName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Unknown',
         departmentId: currentUser?.departmentId,
         roleId: currentUser?.roleId
       });
-      
+
       if (!currentUser) {
         console.log('User profile not found');
         return res.json([]);
@@ -967,34 +967,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all leaves and employees
       const allLeaves = await storage.getAllLeaves();
       const allEmployees = await storage.getAllUserProfiles();
-      
+
       console.log('Total leaves in system:', allLeaves.length);
       console.log('Total employees in system:', allEmployees.length);
       console.log('Current user level:', currentUserRoleLevel);
       console.log('Current user access level:', currentUserAccessLevel);
-      
+
       // Filter leaves based on user's role level
       const pendingLeaves = allLeaves.filter(leave => {
         // Only show 'Open' status leaves
         if (leave.status !== 'Open') {
           return false;
         }
-        
+
         // Find the employee who applied for leave
         const applicant = allEmployees.find(emp => emp.id === leave.userId);
-        
+
         if (!applicant) {
           console.log('Applicant not found for leave:', leave.id);
           return false;
         }
-        
+
         // Show leaves that are assigned to this user
         const isAssignedToUser = leave.managerId === userId;
-        
+
         // For Level 1 users (Admin), also show leaves from Level 2 users
         if (currentUserRoleLevel === 1) {
           const shouldShow = isAssignedToUser;
-          
+
           if (shouldShow) {
             console.log('Including leave for Level 1 approver:', {
               leaveId: leave.id,
@@ -1003,13 +1003,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               assignedManagerId: leave.managerId
             });
           }
-          
+
           return shouldShow;
         } else if (currentUserAccessLevel === 'Manager') {
           // For managers, filter to show leaves assigned to them or in same department
           const inSameDepartment = currentUser.departmentId && applicant.departmentId === currentUser.departmentId;
           const shouldShow = isAssignedToUser || inSameDepartment;
-          
+
           if (shouldShow) {
             console.log('Including leave for Manager:', {
               leaveId: leave.id,
@@ -1020,10 +1020,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               assignedManagerId: leave.managerId
             });
           }
-          
+
           return shouldShow;
         }
-        
+
         return false;
       });
 
@@ -1079,7 +1079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If employee is Level 2 (Manager), assign to Level 1 (Admin)
       if (employeeRole && employeeRole.level === 2) {
         const allEmployees = await storage.getAllUserProfiles();
-        
+
         // Find a Level 1 user (Admin) to approve the leave
         for (const emp of allEmployees) {
           if (emp.roleId && emp.id !== userId) {
@@ -1098,12 +1098,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (employee?.departmentId) {
         // For other employees, find manager in the same department
         const allEmployees = await storage.getAllUserProfiles();
-        
+
         for (const emp of allEmployees) {
           if (emp.departmentId === employee.departmentId && 
               emp.roleId && 
               emp.id !== userId) {
-            
+
             // Check if this employee has a Manager role
             const role = await storage.getUserRole(emp.roleId);
             if (role && role.accessLevel === 'Manager') {
@@ -1137,7 +1137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (let date = new Date(fromDate); date <= toDate; date.setDate(date.getDate() + 1)) {
         const dateStr = date.toISOString().split('T')[0];
         const existingAttendance = await storage.getAttendanceByDate(userId, dateStr);
-        
+
         if (existingAttendance && existingAttendance.status === 'Present') {
           presentDates.push(dateStr);
         }
@@ -1188,7 +1188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         managerId, // Set manager from department or direct manager
       });
       const leave = await storage.createLeave(validated);
-      
+
       console.log('Leave created:', {
         leaveId: leave.id,
         userId: leave.userId,
@@ -1246,12 +1246,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (updateData.status === 'Approved' && existingLeave.status !== 'Approved') {
         const fromDate = new Date(leave.fromDate);
         const toDate = new Date(leave.toDate);
-        
+
         // Update leave ledger - deduct used leaves
         try {
           const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           const leaveDays = leave.halfDay ? 0.5 : daysDiff;
-          
+
           console.log('Leave status changed to Approved - updating ledger:', {
             userId: leave.userId,
             leaveTypeId: leave.leaveTypeId,
@@ -1261,7 +1261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             leaveDays,
             halfDay: leave.halfDay
           });
-          
+
           await storage.updateLeaveLedgerUsage(
             leave.userId,
             leave.leaveTypeId,
@@ -1320,7 +1320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const toDate = new Date(leave.toDate);
           const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           const leaveDays = leave.halfDay ? 0.5 : daysDiff;
-          
+
           await storage.updateLeaveLedgerUsage(
             leave.userId,
             leave.leaveTypeId,
@@ -1330,7 +1330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (ledgerError) {
           console.error('Failed to reverse leave ledger:', ledgerError);
         }
-        
+
         // Remove any "On Leave" attendance records for the period
         const fromDate = new Date(leave.fromDate);
         const toDate = new Date(leave.toDate);
@@ -1449,7 +1449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const leaveDateFrom = new Date(approvedLeave.fromDate);
       const leaveDateTo = new Date(approvedLeave.toDate);
       const currentDate = new Date(leaveDateFrom);
-      
+
       while (currentDate <= leaveDateTo) {
         const attendanceDate = currentDate.toISOString().split('T')[0];
 
@@ -1478,7 +1478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalDuration: approvedLeave.halfDay ? '4' : '8',
           });
         }
-        
+
         // Move to next day
         currentDate.setDate(currentDate.getDate() + 1);
       }
@@ -1554,13 +1554,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const toDate = new Date(leave.toDate);
           const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           const leaveDays = leave.halfDay ? 0.5 : daysDiff;
-          
+
           console.log('Restoring leave quota after rejection:', {
             userId: leave.userId,
             leaveTypeId: leave.leaveTypeId,
             leaveDays
           });
-          
+
           // Negative days to add back the leaves
           await storage.updateLeaveLedgerUsage(
             leave.userId,
@@ -1738,7 +1738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Managers, HR, Accountants, and Admins can view all reimbursements; employees view their own
       const canViewAll = ['Admin', 'HR', 'Manager', 'Accountant'].includes(userRole?.accessLevel || '');
-      
+
       let reimbursements;
       if (canViewAll) {
         // For elevated roles, get all reimbursements (TODO: filter by team/department for managers)
@@ -1747,7 +1747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For employees, only show their own
         reimbursements = await storage.getReimbursementsByUser(userId);
       }
-      
+
       res.json(reimbursements);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch reimbursements" });
@@ -1906,7 +1906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // HR, Accountants, and Admins can view all payrolls; Managers and employees view their own only
       const canViewAll = ['Admin', 'HR', 'Accountant'].includes(userRole?.accessLevel || '');
-      
+
       let payrolls;
       if (canViewAll) {
         // For elevated roles, get all payrolls
@@ -1915,7 +1915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For employees, only show their own
         payrolls = await storage.getPayrollsByUser(userId);
       }
-      
+
       res.json(payrolls);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch payroll" });
