@@ -773,15 +773,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Attendance record not found" });
       }
 
-      // Send email notification to manager
+      // Send email notification to appropriate approver
       try {
         const employee = await storage.getUserProfile(userId);
-        const manager = employee?.managerId ? await storage.getUserProfile(employee.managerId) : null;
+        let approver = null;
 
-        if (employee && manager && manager.email) {
+        // Check if employee is Manager or Project Management role
+        if (employee?.roleId) {
+          const employeeRole = await storage.getUserRole(employee.roleId);
+          
+          // If Manager or Project Management, find Super Admin
+          if (employeeRole && (employeeRole.accessLevel === 'Manager' || employeeRole.level === 2)) {
+            const allEmployees = await storage.getAllUserProfiles();
+            
+            for (const emp of allEmployees) {
+              if (emp.roleId && emp.id !== userId) {
+                const role = await storage.getUserRole(emp.roleId);
+                if (role && role.level === 1 && role.accessLevel === 'Admin') {
+                  approver = emp;
+                  break;
+                }
+              }
+            }
+          } else {
+            // For regular employees, use their direct manager
+            approver = employee?.managerId ? await storage.getUserProfile(employee.managerId) : null;
+          }
+        }
+
+        if (employee && approver && approver.email) {
           await emailService.sendAttendanceRegularizationNotification(
             `${employee.firstName} ${employee.lastName}`,
-            manager.email,
+            approver.email,
             attendance.attendanceDate,
             reason
           );
@@ -1065,7 +1088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         roleId: employee?.roleId
       });
 
-      // Get the employee's role to check their level
+      // Get the employee's role to check their level and access
       let employeeRole = null;
       if (employee?.roleId) {
         employeeRole = await storage.getUserRole(employee.roleId);
@@ -1076,17 +1099,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // If employee is Level 2 (Manager), assign to Level 1 (Admin)
-      if (employeeRole && employeeRole.level === 2) {
+      // If employee is Manager or has Manager access level, assign to Super Admin (Level 1)
+      if (employeeRole && (employeeRole.accessLevel === 'Manager' || employeeRole.level === 2)) {
         const allEmployees = await storage.getAllUserProfiles();
 
-        // Find a Level 1 user (Admin) to approve the leave
+        // Find a Super Admin (Level 1) to approve the leave
         for (const emp of allEmployees) {
           if (emp.roleId && emp.id !== userId) {
             const role = await storage.getUserRole(emp.roleId);
-            if (role && role.level === 1) {
+            if (role && role.level === 1 && role.accessLevel === 'Admin') {
               managerId = emp.id;
-              console.log('Found Level 1 approver for Level 2 employee:', {
+              console.log('Found Super Admin approver for Manager/Project Management:', {
                 managerId: emp.id,
                 managerName: `${emp.firstName} ${emp.lastName}`,
                 managerRole: role.roleName
