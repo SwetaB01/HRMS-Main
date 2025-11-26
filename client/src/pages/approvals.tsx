@@ -37,7 +37,7 @@ export default function Approvals() {
 
   const { data: pendingLeaves, isLoading } = useQuery<Leave[]>({
     queryKey: ["/api/approvals/leaves"],
-    enabled: !!currentUser && currentUser?.accessLevel === 'Manager',
+    enabled: !!currentUser && (currentUser?.accessLevel === 'Manager' || currentUser?.accessLevel === 'Admin'),
   });
 
   const { data: employees } = useQuery<any[]>({
@@ -54,8 +54,8 @@ export default function Approvals() {
     return leaveType ? leaveType.name : leaveTypeId;
   };
 
-  // Check if user has permission to view approvals - only managers
-  const hasApprovalAccess = currentUser && currentUser.accessLevel === 'Manager';
+  // Check if user has permission to view approvals - managers and admins
+  const hasApprovalAccess = currentUser && (currentUser.accessLevel === 'Manager' || currentUser.accessLevel === 'Admin');
 
   if (!hasApprovalAccess) {
     return (
@@ -205,7 +205,30 @@ export default function Approvals() {
                       <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
                       <TableCell>{getStatusBadge(leave.status)}</TableCell>
                       <TableCell>
-                        <span className="text-sm text-muted-foreground">View Only</span>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => {
+                              setSelectedLeave(leave);
+                              setIsApproveDialogOpen(true);
+                            }}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              setSelectedLeave(leave);
+                              setIsRejectDialogOpen(true);
+                            }}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

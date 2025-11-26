@@ -798,6 +798,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/attendance/:id/regularize/approve", allowRoles('Manager', 'Admin'), async (req, res) => {
+    try {
+      const approverId = req.session.userId!;
+      const { id } = req.params;
+      const { comments } = req.body;
+
+      const attendance = await storage.updateAttendance(id, {
+        regularizationStatus: 'Approved',
+        regularizationApprovedBy: approverId,
+        regularizationApprovedAt: new Date(),
+      });
+
+      if (!attendance) {
+        return res.status(404).json({ message: "Attendance record not found" });
+      }
+
+      res.json(attendance);
+    } catch (error: any) {
+      console.error('Regularization approval error:', error);
+      res.status(400).json({ message: error.message || "Failed to approve regularization" });
+    }
+  });
+
+  app.patch("/api/attendance/:id/regularize/reject", allowRoles('Manager', 'Admin'), async (req, res) => {
+    try {
+      const approverId = req.session.userId!;
+      const { id } = req.params;
+      const { comments } = req.body;
+
+      if (!comments) {
+        return res.status(400).json({ message: "Comments are required for rejection" });
+      }
+
+      const attendance = await storage.updateAttendance(id, {
+        regularizationStatus: 'Rejected',
+        regularizationApprovedBy: approverId,
+        regularizationApprovedAt: new Date(),
+      });
+
+      if (!attendance) {
+        return res.status(404).json({ message: "Attendance record not found" });
+      }
+
+      res.json(attendance);
+    } catch (error: any) {
+      console.error('Regularization rejection error:', error);
+      res.status(400).json({ message: error.message || "Failed to reject regularization" });
+    }
+  });
+
   // Leave Routes
   app.get("/api/leaves", async (req, res) => {
     try {
@@ -1327,7 +1377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/leaves/:id/approve", allowRoles('Manager'), async (req, res) => {
+  app.patch("/api/leaves/:id/approve", allowRoles('Manager', 'Admin'), async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;
@@ -1474,7 +1524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/leaves/:id/reject", allowRoles('Manager'), async (req, res) => {
+  app.patch("/api/leaves/:id/reject", allowRoles('Manager', 'Admin'), async (req, res) => {
     try {
       const { id } = req.params;
       const { comments } = req.body;
