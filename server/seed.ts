@@ -314,6 +314,30 @@ export async function seedDatabase() {
   }
 
 
+  // First, clean up any duplicate holidays in the database
+  console.log('Checking for duplicate holidays...');
+  const allHolidays = await storage.getAllHolidays();
+  const uniqueHolidaysMap = new Map();
+  const duplicatesToDelete = [];
+
+  for (const holiday of allHolidays) {
+    const key = `${holiday.name}-${holiday.fromDate}`;
+    if (uniqueHolidaysMap.has(key)) {
+      // This is a duplicate, mark for deletion
+      duplicatesToDelete.push(holiday.id);
+    } else {
+      uniqueHolidaysMap.set(key, holiday);
+    }
+  }
+
+  // Delete duplicates
+  if (duplicatesToDelete.length > 0) {
+    console.log(`Deleting ${duplicatesToDelete.length} duplicate holidays...`);
+    for (const id of duplicatesToDelete) {
+      await storage.deleteHoliday(id);
+    }
+  }
+
   // Seed National Holidays for 2025-2026
   const holidaysData = [
     // 2025 Holidays
@@ -322,10 +346,10 @@ export async function seedDatabase() {
     { name: "Republic Day", fromDate: "2025-01-26", toDate: "2025-01-26", totalHolidays: 1 },
     { name: "Maha Shivaratri", fromDate: "2025-02-26", toDate: "2025-02-26", totalHolidays: 1 },
     { name: "Holi", fromDate: "2025-03-14", toDate: "2025-03-14", totalHolidays: 1 },
-    { name: "Good Friday", fromDate: "2025-04-18", toDate: "2025-04-18", totalHolidays: 1 },
-    { name: "Mahavir Jayanti", fromDate: "2025-04-10", toDate: "2025-04-10", totalHolidays: 1 },
-    { name: "Ram Navami", fromDate: "2025-04-06", toDate: "2025-04-06", totalHolidays: 1 },
     { name: "Eid ul-Fitr", fromDate: "2025-03-31", toDate: "2025-03-31", totalHolidays: 1 },
+    { name: "Ram Navami", fromDate: "2025-04-06", toDate: "2025-04-06", totalHolidays: 1 },
+    { name: "Mahavir Jayanti", fromDate: "2025-04-10", toDate: "2025-04-10", totalHolidays: 1 },
+    { name: "Good Friday", fromDate: "2025-04-18", toDate: "2025-04-18", totalHolidays: 1 },
     { name: "Buddha Purnima", fromDate: "2025-05-12", toDate: "2025-05-12", totalHolidays: 1 },
     { name: "Eid ul-Adha", fromDate: "2025-06-07", toDate: "2025-06-07", totalHolidays: 1 },
     { name: "Muharram", fromDate: "2025-07-06", toDate: "2025-07-06", totalHolidays: 1 },
@@ -352,22 +376,23 @@ export async function seedDatabase() {
     { name: "Buddha Purnima", fromDate: "2026-05-01", toDate: "2026-05-01", totalHolidays: 1 },
     { name: "Eid ul-Adha", fromDate: "2026-05-28", toDate: "2026-05-28", totalHolidays: 1 },
     { name: "Muharram", fromDate: "2026-06-26", toDate: "2026-06-26", totalHolidays: 1 },
-    { name: "Independence Day", fromDate: "2026-08-15", toDate: "2026-08-15", totalHolidays: 1 },
     { name: "Janmashtami", fromDate: "2026-08-05", toDate: "2026-08-05", totalHolidays: 1 },
+    { name: "Independence Day", fromDate: "2026-08-15", toDate: "2026-08-15", totalHolidays: 1 },
     { name: "Ganesh Chaturthi", fromDate: "2026-08-16", toDate: "2026-08-16", totalHolidays: 1 },
     { name: "Milad un-Nabi", fromDate: "2026-08-25", toDate: "2026-08-25", totalHolidays: 1 },
-    { name: "Gandhi Jayanti", fromDate: "2026-10-02", toDate: "2026-10-02", totalHolidays: 1 },
     { name: "Dussehra", fromDate: "2026-09-21", toDate: "2026-09-21", totalHolidays: 1 },
+    { name: "Gandhi Jayanti", fromDate: "2026-10-02", toDate: "2026-10-02", totalHolidays: 1 },
     { name: "Diwali", fromDate: "2026-10-09", toDate: "2026-10-10", totalHolidays: 2 },
     { name: "Guru Nanak Jayanti", fromDate: "2026-11-24", toDate: "2026-11-24", totalHolidays: 1 },
     { name: "Christmas", fromDate: "2026-12-25", toDate: "2026-12-25", totalHolidays: 1 },
   ];
 
-  // Check and create holidays only if they don't exist
+  // Get fresh list after cleanup
+  const currentHolidays = await storage.getAllHolidays();
+  
+  // Create holidays only if they don't exist
   for (const holiday of holidaysData) {
-    // Check if holiday already exists by name and date
-    const existingHolidays = await storage.getAllHolidays();
-    const exists = existingHolidays.some(
+    const exists = currentHolidays.some(
       h => h.name === holiday.name && h.fromDate === holiday.fromDate
     );
     
