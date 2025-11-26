@@ -36,6 +36,7 @@ import {
 
 export default function Holidays() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedType, setSelectedType] = useState<string>("All");
@@ -235,6 +236,7 @@ export default function Holidays() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                onClick={() => setEditingHoliday(holiday)}
                                 data-testid={`button-edit-${holiday.id}`}
                               >
                                 <Pencil className="h-4 w-4" />
@@ -531,6 +533,25 @@ export default function Holidays() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {editingHoliday && (
+        <Dialog open={!!editingHoliday} onOpenChange={() => setEditingHoliday(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Holiday</DialogTitle>
+              <DialogDescription>
+                Update holiday information
+              </DialogDescription>
+            </DialogHeader>
+            <HolidayForm
+              holiday={editingHoliday}
+              onSuccess={() => {
+                setEditingHoliday(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

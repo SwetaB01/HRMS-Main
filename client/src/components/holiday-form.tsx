@@ -33,19 +33,27 @@ type HolidayFormData = z.infer<typeof holidayFormSchema>;
 
 interface HolidayFormProps {
   onSuccess: () => void;
+  holiday?: {
+    id: number;
+    name: string;
+    fromDate: string;
+    toDate: string;
+    totalHolidays: number;
+    type: string;
+  };
 }
 
-export function HolidayForm({ onSuccess }: HolidayFormProps) {
+export function HolidayForm({ onSuccess, holiday }: HolidayFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<HolidayFormData>({
     resolver: zodResolver(holidayFormSchema),
     defaultValues: {
-      name: "",
-      fromDate: "",
-      toDate: "",
-      totalHolidays: "1",
-      type: "National",
+      name: holiday?.name || "",
+      fromDate: holiday?.fromDate || "",
+      toDate: holiday?.toDate || "",
+      totalHolidays: holiday?.totalHolidays.toString() || "1",
+      type: holiday?.type || "National",
     },
   });
 
@@ -58,14 +66,17 @@ export function HolidayForm({ onSuccess }: HolidayFormProps) {
         companyId: null,
       };
 
-      const response = await fetch('/api/holidays', {
-        method: 'POST',
+      const url = holiday ? `/api/holidays/${holiday.id}` : '/api/holidays';
+      const method = holiday ? 'PATCH' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create holiday');
+        throw new Error(`Failed to ${holiday ? 'update' : 'create'} holiday`);
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/holidays"] });
@@ -175,7 +186,10 @@ export function HolidayForm({ onSuccess }: HolidayFormProps) {
             disabled={isLoading}
             data-testid="button-submit-holiday"
           >
-            {isLoading ? "Creating..." : "Create Holiday"}
+            {isLoading 
+              ? (holiday ? "Updating..." : "Creating...") 
+              : (holiday ? "Update Holiday" : "Create Holiday")
+            }
           </Button>
         </div>
       </form>
