@@ -164,7 +164,11 @@ export default function Holidays() {
                         ))}
                       </>
                     ) : holidays && holidays.length > 0 ? (
-                      holidays.map((holiday) => (
+                      Array.from(
+                        new Map(
+                          holidays.map((holiday) => [holiday.id, holiday])
+                        ).values()
+                      ).map((holiday) => (
                         <TableRow key={holiday.id} data-testid={`row-holiday-${holiday.id}`}>
                           <TableCell className="font-medium">{holiday.name}</TableCell>
                           <TableCell>{holiday.fromDate}</TableCell>
