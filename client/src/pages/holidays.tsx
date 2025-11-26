@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { useUser } from "@/hooks/use-user";
 import { Plus, Pencil, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,9 +41,13 @@ export default function Holidays() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedType, setSelectedType] = useState<string>("All");
 
+  const { data: user } = useUser();
   const { data: holidays, isLoading } = useQuery<Holiday[]>({
     queryKey: ["/api/holidays"],
   });
+
+  // Check if user is Super Admin
+  const isSuperAdmin = user?.roleName === "Super Admin";
 
   const handleDeleteHoliday = async (id: number) => {
     if (!confirm("Are you sure you want to delete this holiday?")) {
@@ -136,27 +141,29 @@ export default function Holidays() {
             Manage company holidays and calendars
           </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-holiday">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Holiday
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Holiday</DialogTitle>
-              <DialogDescription>
-                Create a new holiday entry
-              </DialogDescription>
-            </DialogHeader>
-            <HolidayForm
-              onSuccess={() => {
-                setIsAddDialogOpen(false);
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        {isSuperAdmin && (
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-holiday">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Holiday
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Holiday</DialogTitle>
+                <DialogDescription>
+                  Create a new holiday entry
+                </DialogDescription>
+              </DialogHeader>
+              <HolidayForm
+                onSuccess={() => {
+                  setIsAddDialogOpen(false);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Tabs defaultValue="list" className="space-y-4">
@@ -193,7 +200,7 @@ export default function Holidays() {
                       <TableHead>From Date</TableHead>
                       <TableHead>To Date</TableHead>
                       <TableHead>Total Days</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      {isSuperAdmin && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -243,31 +250,33 @@ export default function Holidays() {
                           <TableCell>{holiday.fromDate}</TableCell>
                           <TableCell>{holiday.toDate}</TableCell>
                           <TableCell>{holiday.totalHolidays}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setEditingHoliday(holiday)}
-                                data-testid={`button-edit-${holiday.id}`}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteHoliday(holiday.id)}
-                                data-testid={`button-delete-${holiday.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                          {isSuperAdmin && (
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setEditingHoliday(holiday)}
+                                  data-testid={`button-edit-${holiday.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteHoliday(holiday.id)}
+                                  data-testid={`button-delete-${holiday.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={isSuperAdmin ? 6 : 5} className="text-center py-8 text-muted-foreground">
                           No holidays configured
                         </TableCell>
                       </TableRow>
