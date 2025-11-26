@@ -149,7 +149,7 @@ export default function Holidays() {
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Filter by type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50">
                   <SelectItem value="All">All Types</SelectItem>
                   <SelectItem value="National">National</SelectItem>
                   <SelectItem value="Regional">Regional</SelectItem>
@@ -251,7 +251,7 @@ export default function Holidays() {
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-50">
                     <SelectItem value="All">All Types</SelectItem>
                     <SelectItem value="National">National</SelectItem>
                     <SelectItem value="Regional">Regional</SelectItem>
@@ -263,7 +263,7 @@ export default function Holidays() {
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-50">
                     {monthNames.map((month, index) => (
                       <SelectItem key={index} value={index.toString()}>
                         {month}
@@ -275,7 +275,7 @@ export default function Holidays() {
                   <SelectTrigger className="w-[100px]">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-50">
                     {availableYears.map((year) => (
                       <SelectItem key={year} value={year.toString()}>
                         {year}
@@ -388,7 +388,7 @@ export default function Holidays() {
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-50">
                     <SelectItem value="All">All Types</SelectItem>
                     <SelectItem value="National">National</SelectItem>
                     <SelectItem value="Regional">Regional</SelectItem>
@@ -400,7 +400,7 @@ export default function Holidays() {
                   <SelectTrigger className="w-[100px]">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-50">
                     {availableYears.map((year) => (
                       <SelectItem key={year} value={year.toString()}>
                         {year}
