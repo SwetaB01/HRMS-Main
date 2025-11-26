@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Plus, Calendar, CheckCircle, XCircle, Users } from "lucide-react";
+import { Plus, Calendar, CheckCircle, XCircle, Users, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -33,6 +33,7 @@ import { Leave, LeaveLedger } from "@shared/schema";
 import { LeaveForm } from "@/components/leave-form";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation } from "@tanstack/react-query";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Leaves() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -67,6 +68,11 @@ export default function Leaves() {
     retry: false,
     enabled: currentUser?.accessLevel !== 'Employee', // Only fetch if not a regular employee
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  const { data: pendingLeaveRequests, isLoading: isLoadingRequests } = useQuery<Leave[]>({
+    queryKey: ["/api/approvals/leaves"],
+    enabled: currentUser?.accessLevel === 'Manager' || currentUser?.accessLevel === 'Admin',
   });
 
   const approveLeaveMutation = useMutation({
@@ -354,68 +360,228 @@ export default function Leaves() {
         )}
       </div>
 
-      <Card></Card>
+      {(currentUser?.accessLevel === 'Admin' || currentUser?.accessLevel === 'Manager') ? (
+        <Tabs defaultValue="history" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="history">Leave History</TabsTrigger>
+            <TabsTrigger value="requests">
+              Leave Requests ({pendingLeaveRequests?.length || 0})
+            </TabsTrigger>
+          </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Leave History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee Name</TableHead>
-                  <TableHead>Leave Type</TableHead>
-                  <TableHead>From Date</TableHead>
-                  <TableHead>To Date</TableHead>
-                  <TableHead>Days</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Manager Comments</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <TableRow key={i}>
-                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle>Leave History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Employee Name</TableHead>
+                        <TableHead>Leave Type</TableHead>
+                        <TableHead>From Date</TableHead>
+                        <TableHead>To Date</TableHead>
+                        <TableHead>Days</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Manager Comments</TableHead>
                       </TableRow>
-                    ))}
-                  </>
-                ) : leaves && leaves.length > 0 ? (
-                  leaves.map((leave) => (
-                    <TableRow key={leave.id} data-testid={`row-leave-${leave.id}`}>
-                      <TableCell className="font-medium">{getEmployeeName(leave.userId)}</TableCell>
-                      <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
-                      <TableCell>{leave.fromDate}</TableCell>
-                      <TableCell>{leave.toDate}</TableCell>
-                      <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
-                      <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
-                      <TableCell>{getStatusBadge(leave.status)}</TableCell>
-                      <TableCell>{leave.managerComments || '-'}</TableCell>
-                    </TableRow>
-                  ))
-                ) : (
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
+                        <>
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <TableRow key={i}>
+                              <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                              <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      ) : leaves && leaves.length > 0 ? (
+                        leaves.map((leave) => (
+                          <TableRow key={leave.id} data-testid={`row-leave-${leave.id}`}>
+                            <TableCell className="font-medium">{getEmployeeName(leave.userId)}</TableCell>
+                            <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
+                            <TableCell>{leave.fromDate}</TableCell>
+                            <TableCell>{leave.toDate}</TableCell>
+                            <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
+                            <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
+                            <TableCell>{getStatusBadge(leave.status)}</TableCell>
+                            <TableCell>{leave.managerComments || '-'}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            No leave applications found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="requests">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending Leave Requests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Leave Type</TableHead>
+                        <TableHead>From Date</TableHead>
+                        <TableHead>To Date</TableHead>
+                        <TableHead>Days</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoadingRequests ? (
+                        <>
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <TableRow key={i}>
+                              <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                              <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                              <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      ) : pendingLeaveRequests && pendingLeaveRequests.length > 0 ? (
+                        pendingLeaveRequests.map((leave) => (
+                          <TableRow key={leave.id}>
+                            <TableCell>{getEmployeeName(leave.userId)}</TableCell>
+                            <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
+                            <TableCell>{leave.fromDate}</TableCell>
+                            <TableCell>{leave.toDate}</TableCell>
+                            <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
+                            <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
+                            <TableCell>{getStatusBadge(leave.status)}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => {
+                                    setSelectedLeave(leave);
+                                    setIsApproveDialogOpen(true);
+                                  }}
+                                >
+                                  <Check className="h-4 w-4 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    setSelectedLeave(leave);
+                                    setIsRejectDialogOpen(true);
+                                  }}
+                                >
+                                  <X className="h-4 w-4 mr-1" />
+                                  Reject
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            No pending leave requests
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Leave History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No leave applications found
-                    </TableCell>
+                    <TableHead>Employee Name</TableHead>
+                    <TableHead>Leave Type</TableHead>
+                    <TableHead>From Date</TableHead>
+                    <TableHead>To Date</TableHead>
+                    <TableHead>Days</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Manager Comments</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <TableRow key={i}>
+                          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        </TableRow>
+                      ))}
+                    </>
+                  ) : leaves && leaves.length > 0 ? (
+                    leaves.map((leave) => (
+                      <TableRow key={leave.id} data-testid={`row-leave-${leave.id}`}>
+                        <TableCell className="font-medium">{getEmployeeName(leave.userId)}</TableCell>
+                        <TableCell>{getLeaveTypeName(leave.leaveTypeId)}</TableCell>
+                        <TableCell>{leave.fromDate}</TableCell>
+                        <TableCell>{leave.toDate}</TableCell>
+                        <TableCell>{leave.halfDay ? '0.5' : '1'}</TableCell>
+                        <TableCell className="max-w-xs truncate">{leave.reason}</TableCell>
+                        <TableCell>{getStatusBadge(leave.status)}</TableCell>
+                        <TableCell>{leave.managerComments || '-'}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        No leave applications found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Approve Dialog */}
       <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
