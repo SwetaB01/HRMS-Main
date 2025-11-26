@@ -190,7 +190,8 @@ export default function Holidays() {
                     ) : holidays && holidays.length > 0 ? (
                       Array.from(
                         new Map(
-                          holidays.map((holiday) => [holiday.id, holiday])
+                          (selectedType === "All" ? holidays : holidays.filter(h => h.type === selectedType))
+                            .map((holiday) => [holiday.id, holiday])
                         ).values()
                       ).map((holiday) => (
                         <TableRow key={holiday.id} data-testid={`row-holiday-${holiday.id}`}>
