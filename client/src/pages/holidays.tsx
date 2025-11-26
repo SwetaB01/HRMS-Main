@@ -71,15 +71,21 @@ export default function Holidays() {
   });
 
   // Get holidays for selected month (ensure no duplicates)
-  const holidaysForMonth = holidaysForYear.filter((holiday) => {
-    const fromDate = new Date(holiday.fromDate);
-    const toDate = new Date(holiday.toDate);
-    const fromMonth = fromDate.getMonth();
-    const toMonth = toDate.getMonth();
-    
-    // Include holiday if it starts or ends in the selected month
-    return fromMonth === selectedMonth || toMonth === selectedMonth;
-  });
+  const holidaysForMonth = Array.from(
+    new Map(
+      holidaysForYear
+        .filter((holiday) => {
+          const fromDate = new Date(holiday.fromDate);
+          const toDate = new Date(holiday.toDate);
+          const fromMonth = fromDate.getMonth();
+          const toMonth = toDate.getMonth();
+          
+          // Include holiday if it starts or ends in the selected month
+          return fromMonth === selectedMonth || toMonth === selectedMonth;
+        })
+        .map((holiday) => [holiday.id, holiday])
+    ).values()
+  );
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
