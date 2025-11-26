@@ -346,10 +346,16 @@ export default function Holidays() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {monthNames.map((month, index) => {
-                    const monthHolidays = holidaysForYear.filter((holiday) => {
-                      const holidayMonth = new Date(holiday.fromDate).getMonth();
-                      return holidayMonth === index;
-                    });
+                    const monthHolidays = Array.from(
+                      new Map(
+                        holidaysForYear
+                          .filter((holiday) => {
+                            const holidayMonth = new Date(holiday.fromDate).getMonth();
+                            return holidayMonth === index;
+                          })
+                          .map((holiday) => [holiday.id, holiday])
+                      ).values()
+                    );
                     
                     const totalDays = monthHolidays.reduce((sum, h) => sum + h.totalHolidays, 0);
 

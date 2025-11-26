@@ -363,11 +363,20 @@ export async function seedDatabase() {
     { name: "Christmas", fromDate: "2026-12-25", toDate: "2026-12-25", totalHolidays: 1 },
   ];
 
+  // Check and create holidays only if they don't exist
   for (const holiday of holidaysData) {
-    await storage.createHoliday({
-      ...holiday,
-      companyId: null,
-    });
+    // Check if holiday already exists by name and date
+    const existingHolidays = await storage.getAllHolidays();
+    const exists = existingHolidays.some(
+      h => h.name === holiday.name && h.fromDate === holiday.fromDate
+    );
+    
+    if (!exists) {
+      await storage.createHoliday({
+        ...holiday,
+        companyId: null,
+      });
+    }
   }
 
   console.log('Database seeding completed!');
