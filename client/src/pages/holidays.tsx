@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -86,14 +85,14 @@ export default function Holidays() {
 
   // Create a set of dates that have holidays (for calendar highlighting)
   const holidayDates = new Set<string>();
-  
+
   holidaysForYear.forEach((holiday) => {
     // Parse dates in local timezone to avoid timezone shifts
     const [fromYear, fromMonth, fromDay] = holiday.fromDate.split('-').map(Number);
     const [toYear, toMonth, toDay] = holiday.toDate.split('-').map(Number);
     const fromDate = new Date(fromYear, fromMonth - 1, fromDay);
     const toDate = new Date(toYear, toMonth - 1, toDay);
-    
+
     // Add all dates in the holiday range to the set
     for (let d = new Date(fromDate); d <= toDate; d.setDate(d.getDate() + 1)) {
       const year = d.getFullYear();
@@ -114,7 +113,7 @@ export default function Holidays() {
           const [toYear, toMonth, toDay] = holiday.toDate.split('-').map(Number);
           const fromDateMonth = fromMonth - 1; // JavaScript months are 0-indexed
           const toDateMonth = toMonth - 1;
-          
+
           // Include holiday if it starts or ends in the selected month
           return fromDateMonth === selectedMonth || toDateMonth === selectedMonth;
         })
@@ -469,7 +468,7 @@ export default function Holidays() {
                           .map((holiday) => [holiday.id, holiday])
                       ).values()
                     );
-                    
+
                     const totalDays = monthHolidays.reduce((sum, h) => sum + h.totalHolidays, 0);
 
                     return (
@@ -532,7 +531,7 @@ export default function Holidays() {
                   })}
                 </div>
               )}
-              
+
               {!isLoading && holidaysForYear.length > 0 && (
                 <div className="mt-6 p-4 bg-primary/5 rounded-lg">
                   <div className="flex items-center justify-between">
