@@ -11,6 +11,7 @@ import {
   LogOut,
   LayoutDashboard,
   User,
+  CheckSquare,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -83,12 +84,15 @@ interface AppSidebarProps {
     lastName: string;
     email: string;
     roleName?: string;
+    accessLevel?: string;
   } | null;
   onLogout?: () => void;
 }
 
 export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
   const [location] = useLocation();
+  const isAdminOrHR = currentUser?.accessLevel === 'Admin' || currentUser?.accessLevel === 'HR';
+  const isManagerOrAdmin = currentUser?.accessLevel === 'Manager' || currentUser?.accessLevel === 'Admin';
 
   return (
     <Sidebar>
@@ -140,6 +144,16 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {isManagerOrAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location === "/approvals"}>
+                    <Link href="/approvals">
+                      <CheckSquare className="h-4 w-4" />
+                      <span>Approvals</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
