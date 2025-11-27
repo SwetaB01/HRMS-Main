@@ -3,6 +3,7 @@ import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, dep
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { storage } from './storage';
+import { randomUUID } from 'crypto';
 
 export async function seedDatabase() {
   console.log('Seeding database...');
@@ -212,8 +213,8 @@ export async function seedDatabase() {
 
   // Create a Manager role user if not exists, or update existing one with department
   const [managerRole] = await db.select().from(userRoles).where(eq(userRoles.roleName, 'Manager'));
-  const managerUserExists = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
-  if (managerRole && !managerUserExists) {
+  const managerUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
+  if (managerRole && !managerUser) {
     console.log('Creating manager user...');
     const hashedPassword = await bcrypt.hash('manager123', 10);
     await db.insert(userProfiles).values({
@@ -231,12 +232,12 @@ export async function seedDatabase() {
       departmentId: itDept ? itDept.id : null,
       managerId: null,
     });
-  } else if (managerUserExists && itDept && !managerUserExists.departmentId) {
+  } else if (managerUser && itDept && !managerUser.departmentId) {
     // Update existing manager with department
     console.log('Updating existing manager user with department...');
     await db.update(userProfiles)
       .set({ departmentId: itDept.id })
-      .where(eq(userProfiles.id, managerUserExists.id));
+      .where(eq(userProfiles.id, managerUser.id));
   }
 
   // Create a regular Employee user if not exists, or update existing one with department
@@ -434,6 +435,77 @@ export async function seedDatabase() {
     });
 
     console.log('Reimbursement types created');
+  }
+
+  // Create sample reimbursements
+  const johnDoe = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'john.admin') });
+  const managerUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
+  const accountantUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') }); // Assuming admin is also accountant for seeding purposes
+  const adminUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') });
+
+  const reimbursementTypesTable = await db.select().from(reimbursementTypes);
+  const travelType = reimbursementTypesTable.find(t => t.name === 'Travel');
+  const mealsType = reimbursementTypesTable.find(t => t.name === 'Meals & Entertainment');
+  const officeSuppliesType = reimbursementTypesTable.find(t => t.name === 'Office Supplies');
+
+  if (johnDoe && managerUser && accountantUser && adminUser && travelType && mealsType && officeSuppliesType) {
+    const sampleReimbursements = [
+      {
+        id: randomUUID(),
+        userId: johnDoe.id,
+        reimbursementTypeId: travelType.id,
+        date: '2025-01-15',
+        amount: '1500.00',
+        category: 'Client meeting travel expenses',
+        attachment: null,
+        status: 'Pending',
+        managerId: managerUser.id,
+        managerApprovalDate: null,
+        managerComments: null,
+        accountantId: null,
+        accountantApprovalDate: null,
+        accountantComments: null,
+        createdAt: new Date('2025-01-15'),
+      },
+      {
+        id: randomUUID(),
+        userId: johnDoe.id,
+        reimbursementTypeId: mealsType.id,
+        date: '2025-01-10',
+        amount: '850.00',
+        category: 'Team lunch with client',
+        attachment: null,
+        status: 'Manager Approved',
+        managerId: managerUser.id,
+        managerApprovalDate: new Date('2025-01-11'),
+        managerComments: 'Approved',
+        accountantId: null,
+        accountantApprovalDate: null,
+        accountantComments: null,
+        createdAt: new Date('2025-01-10'),
+      },
+      {
+        id: randomUUID(),
+        userId: adminUser.id,
+        reimbursementTypeId: officeSuppliesType.id,
+        date: '2025-01-05',
+        amount: '2500.00',
+        category: 'Office equipment purchase',
+        attachment: null,
+        status: 'Approved',
+        managerId: null,
+        managerApprovalDate: null,
+        managerComments: null,
+        accountantId: accountantUser.id,
+        accountantApprovalDate: new Date('2025-01-06'),
+        accountantComments: 'Approved by finance',
+        createdAt: new Date('2025-01-05'),
+      },
+    ];
+
+    for (const reimb of sampleReimbursements) {
+      await db.insert(reimbursements).values(reimb);
+    }
   }
 
   console.log('Database seeded successfully!');
