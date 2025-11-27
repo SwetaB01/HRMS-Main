@@ -215,6 +215,62 @@ export class MemStorage implements IStorage {
       { id: 'others', name: 'Others' },
     ];
     reimbTypes.forEach(type => this.reimbursementTypes.set(type.id, type as ReimbursementType));
+
+    // Create sample reimbursements
+    const sampleReimbursements = [
+      {
+        id: 'reimb-1',
+        userId: 'user-john',
+        reimbursementTypeId: 'travel',
+        date: '2025-01-15',
+        amount: '1500.00',
+        category: 'Client meeting travel expenses',
+        attachment: null,
+        status: 'Pending',
+        managerId: 'user-manager',
+        managerApprovalDate: null,
+        managerComments: null,
+        accountantId: null,
+        accountantApprovalDate: null,
+        accountantComments: null,
+        createdAt: new Date('2025-01-15'),
+      },
+      {
+        id: 'reimb-2',
+        userId: 'user-john',
+        reimbursementTypeId: 'meals',
+        date: '2025-01-10',
+        amount: '850.00',
+        category: 'Team lunch with client',
+        attachment: null,
+        status: 'Manager Approved',
+        managerId: 'user-manager',
+        managerApprovalDate: new Date('2025-01-11'),
+        managerComments: 'Approved',
+        accountantId: null,
+        accountantApprovalDate: null,
+        accountantComments: null,
+        createdAt: new Date('2025-01-10'),
+      },
+      {
+        id: 'reimb-3',
+        userId: adminUser.id,
+        reimbursementTypeId: 'office-supplies',
+        date: '2025-01-05',
+        amount: '2500.00',
+        category: 'Office equipment purchase',
+        attachment: null,
+        status: 'Approved',
+        managerId: null,
+        managerApprovalDate: null,
+        managerComments: null,
+        accountantId: accountantUser.id,
+        accountantApprovalDate: new Date('2025-01-06'),
+        accountantComments: 'Approved by finance',
+        createdAt: new Date('2025-01-05'),
+      },
+    ];
+    sampleReimbursements.forEach(reimb => this.reimbursements.set(reimb.id, reimb as Reimbursement));
   }
 
   // User Profile Operations

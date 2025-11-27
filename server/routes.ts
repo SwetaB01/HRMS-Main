@@ -1823,15 +1823,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let reimbursements;
       if (canViewAll) {
-        // For elevated roles, get all reimbursements (TODO: filter by team/department for managers)
+        // For elevated roles, get all reimbursements
         reimbursements = await storage.getAllReimbursements();
+        console.log('Fetched all reimbursements:', reimbursements.length);
       } else {
         // For employees, only show their own
         reimbursements = await storage.getReimbursementsByUser(userId);
+        console.log('Fetched user reimbursements:', reimbursements.length, 'for user:', userId);
       }
 
       res.json(reimbursements);
     } catch (error) {
+      console.error('Failed to fetch reimbursements:', error);
       res.status(500).json({ message: "Failed to fetch reimbursements" });
     }
   });
