@@ -75,12 +75,19 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit leave');
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to submit leave');
+        setIsLoading(false);
+        return;
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
       queryClient.invalidateQueries({ queryKey: ["/api/leave-balance"] });
       onSuccess();
+    } catch (error) {
+      console.error('Error submitting leave:', error);
+      alert('Failed to submit leave application');
+      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
