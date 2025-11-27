@@ -32,11 +32,16 @@ export default function Reimbursements() {
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: reimbursements, isLoading, error } = useQuery<Reimbursement[]>({
+  const { data: reimbursements = [], isLoading, error } = useQuery<Reimbursement[]>({
     queryKey: ["/api/reimbursements"],
   });
 
-  console.log('Reimbursements data:', { reimbursements, isLoading, error });
+  console.log('Reimbursements data:', { 
+    reimbursements, 
+    count: reimbursements?.length, 
+    isLoading, 
+    error 
+  });
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
@@ -113,6 +118,12 @@ export default function Reimbursements() {
                       </TableRow>
                     ))}
                   </>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-destructive">
+                      Error loading reimbursements: {error instanceof Error ? error.message : 'Unknown error'}
+                    </TableCell>
+                  </TableRow>
                 ) : reimbursements && reimbursements.length > 0 ? (
                   reimbursements.map((claim) => (
                     <TableRow key={claim.id} data-testid={`row-reimbursement-${claim.id}`}>

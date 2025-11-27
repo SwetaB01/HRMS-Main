@@ -36,9 +36,17 @@ export default function ReimbursementApprovals() {
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: reimbursements, isLoading } = useQuery<Reimbursement[]>({
+  const { data: reimbursements = [], isLoading, error } = useQuery<Reimbursement[]>({
     queryKey: ["/api/reimbursements"],
     enabled: currentUser?.accessLevel === 'Accountant' || currentUser?.accessLevel === 'Admin',
+  });
+
+  console.log('Reimbursement approvals data:', { 
+    reimbursements, 
+    count: reimbursements?.length, 
+    isLoading, 
+    error,
+    userAccessLevel: currentUser?.accessLevel 
   });
 
   const { data: reimbursementTypes } = useQuery<ReimbursementType[]>({
@@ -189,6 +197,12 @@ export default function ReimbursementApprovals() {
                       </TableRow>
                     ))}
                   </>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-destructive">
+                      Error loading reimbursements: {error instanceof Error ? error.message : 'Unknown error'}
+                    </TableCell>
+                  </TableRow>
                 ) : pendingReimbursements.length > 0 ? (
                   pendingReimbursements.map((reimb) => (
                     <TableRow key={reimb.id}>

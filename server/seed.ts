@@ -458,7 +458,7 @@ export async function seedDatabase() {
   }
 
   if (existingReimbursements.length === 0) {
-    const reimbursements = [
+    const sampleReimbursements = [
       {
         id: randomUUID(),
         userId: johnDoe.id,
@@ -529,7 +529,7 @@ export async function seedDatabase() {
       },
     ];
 
-    for (const reimb of reimbursements) {
+    for (const reimb of sampleReimbursements) {
       await db.insert(reimbursements).values(reimb);
     }
   }
