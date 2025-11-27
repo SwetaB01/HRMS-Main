@@ -1829,6 +1829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('User can view all reimbursements, fetching...');
         reimbursements = await storage.getAllReimbursements();
         console.log('Fetched all reimbursements:', reimbursements.length);
+        console.log('Sample reimbursement:', reimbursements[0]);
       } else {
         // For employees, only show their own
         console.log('User can only view own reimbursements, fetching for userId:', userId);
@@ -1836,6 +1837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('Fetched user reimbursements:', reimbursements.length, 'for user:', userId);
       }
 
+      console.log('Sending reimbursements response:', reimbursements.length, 'items');
       res.json(reimbursements);
     } catch (error) {
       console.error('Failed to fetch reimbursements:', error);

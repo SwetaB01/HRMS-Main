@@ -1,5 +1,5 @@
 import { db } from './db';
-import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, departments } from '@shared/schema';
+import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, departments, reimbursements } from '@shared/schema';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { storage } from './storage';
@@ -427,18 +427,38 @@ export async function seedDatabase() {
   }
 
   // Create sample reimbursements
-  const johnDoe = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'john.admin') });
-  const managerUserForReimb = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
-  const accountantUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') }); // Assuming admin is also accountant for seeding purposes
-  const adminUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') });
+  console.log('Creating sample reimbursements...');
+  const existingReimbursements = await storage.getAllReimbursements();
+  console.log('Reimbursements already exist:', existingReimbursements.length);
 
-  const reimbursementTypesTable = await db.select().from(reimbursementTypes);
-  const travelType = reimbursementTypesTable.find(t => t.name === 'Travel');
-  const mealsType = reimbursementTypesTable.find(t => t.name === 'Meals & Entertainment');
-  const officeSuppliesType = reimbursementTypesTable.find(t => t.name === 'Office Supplies');
+  // Always recreate reimbursements to ensure they exist
+  const travelType = await storage.getAllReimbursementTypes().then(types =>
+    types.find(t => t.name === 'Travel')
+  );
+  const mealsType = await storage.getAllReimbursementTypes().then(types =>
+    types.find(t => t.name === 'Meals & Entertainment')
+  );
+  const officeSuppliesType = await storage.getAllReimbursementTypes().then(types =>
+    types.find(t => t.name === 'Office Supplies')
+  );
 
-  if (johnDoe && managerUserForReimb && accountantUser && adminUser && travelType && mealsType && officeSuppliesType) {
-    const sampleReimbursements = [
+  if (!travelType || !mealsType || !officeSuppliesType) {
+    console.log('Reimbursement types not found, skipping reimbursement creation');
+    return;
+  }
+
+  // Find a manager user for reimbursement approval
+  const managerUserForReimb = await storage.getAllUserProfiles().then(users =>
+    users.find(u => u.roleId === managerRole.id)
+  );
+
+  if (!managerUserForReimb) {
+    console.log('Manager not found, skipping reimbursement creation');
+    return;
+  }
+
+  if (existingReimbursements.length === 0) {
+    const reimbursements = [
       {
         id: randomUUID(),
         userId: johnDoe.id,
@@ -509,7 +529,7 @@ export async function seedDatabase() {
       },
     ];
 
-    for (const reimb of sampleReimbursements) {
+    for (const reimb of reimbursements) {
       await db.insert(reimbursements).values(reimb);
     }
   }
