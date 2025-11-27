@@ -439,7 +439,7 @@ export async function seedDatabase() {
 
   // Create sample reimbursements
   const johnDoe = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'john.admin') });
-  const managerUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
+  const managerUserForReimb = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
   const accountantUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') }); // Assuming admin is also accountant for seeding purposes
   const adminUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') });
 
@@ -448,7 +448,7 @@ export async function seedDatabase() {
   const mealsType = reimbursementTypesTable.find(t => t.name === 'Meals & Entertainment');
   const officeSuppliesType = reimbursementTypesTable.find(t => t.name === 'Office Supplies');
 
-  if (johnDoe && managerUser && accountantUser && adminUser && travelType && mealsType && officeSuppliesType) {
+  if (johnDoe && managerUserForReimb && accountantUser && adminUser && travelType && mealsType && officeSuppliesType) {
     const sampleReimbursements = [
       {
         id: randomUUID(),
@@ -459,7 +459,7 @@ export async function seedDatabase() {
         category: 'Client meeting travel expenses',
         attachment: null,
         status: 'Pending',
-        managerId: managerUser.id,
+        managerId: managerUserForReimb.id,
         managerApprovalDate: null,
         managerComments: null,
         accountantId: null,
@@ -476,7 +476,7 @@ export async function seedDatabase() {
         category: 'Team lunch with client',
         attachment: null,
         status: 'Manager Approved',
-        managerId: managerUser.id,
+        managerId: managerUserForReimb.id,
         managerApprovalDate: new Date('2025-01-11'),
         managerComments: 'Approved',
         accountantId: null,
