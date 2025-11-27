@@ -549,11 +549,15 @@ export class PostgresStorage implements IStorage {
   }
 
   async getReimbursementsByUser(userId: string): Promise<Reimbursement[]> {
-    return await db.select().from(reimbursements).where(eq(reimbursements.userId, userId));
+    const results = await db.select().from(reimbursements).where(eq(reimbursements.userId, userId));
+    console.log('getReimbursementsByUser - userId:', userId, 'found:', results.length, 'reimbursements');
+    return results;
   }
 
   async getAllReimbursements(): Promise<Reimbursement[]> {
-    return await db.select().from(reimbursements);
+    const results = await db.select().from(reimbursements);
+    console.log('getAllReimbursements - fetched from database:', results.length, 'reimbursements');
+    return results;
   }
 
   async getReimbursementsPendingManagerApproval(managerId: string): Promise<Reimbursement[]> {

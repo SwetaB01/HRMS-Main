@@ -438,80 +438,94 @@ export async function seedDatabase() {
   const officeSuppliesType = reimbursementTypesTable.find(t => t.name === 'Office Supplies');
 
   if (johnDoe && managerUserForReimb && accountantUser && adminUser && travelType && mealsType && officeSuppliesType) {
-    const sampleReimbursements = [
-      {
-        id: randomUUID(),
-        userId: johnDoe.id,
-        reimbursementTypeId: travelType.id,
-        date: '2025-01-15',
-        amount: '1500.00',
-        category: 'Client meeting travel expenses',
-        attachment: null,
-        status: 'Pending',
-        managerId: managerUserForReimb.id,
-        managerApprovalDate: null,
-        managerComments: null,
-        accountantId: null,
-        accountantApprovalDate: null,
-        accountantComments: null,
-        createdAt: new Date('2025-01-15'),
-      },
-      {
-        id: randomUUID(),
-        userId: johnDoe.id,
-        reimbursementTypeId: mealsType.id,
-        date: '2025-01-10',
-        amount: '850.00',
-        category: 'Team lunch with client',
-        attachment: null,
-        status: 'Manager Approved',
-        managerId: managerUserForReimb.id,
-        managerApprovalDate: new Date('2025-01-11'),
-        managerComments: 'Approved',
-        accountantId: null,
-        accountantApprovalDate: null,
-        accountantComments: null,
-        createdAt: new Date('2025-01-10'),
-      },
-      {
-        id: randomUUID(),
-        userId: adminUser.id,
-        reimbursementTypeId: officeSuppliesType.id,
-        date: '2025-01-05',
-        amount: '2500.00',
-        category: 'Office equipment purchase',
-        attachment: null,
-        status: 'Approved',
-        managerId: null,
-        managerApprovalDate: null,
-        managerComments: null,
-        accountantId: accountantUser.id,
-        accountantApprovalDate: new Date('2025-01-06'),
-        accountantComments: 'Approved by finance',
-        createdAt: new Date('2025-01-05'),
-      },
-      {
-        id: randomUUID(),
-        userId: johnDoe.id,
-        reimbursementTypeId: officeSuppliesType.id,
-        date: '2025-01-08',
-        amount: '500.00',
-        category: 'Office stationery',
-        attachment: null,
-        status: 'Rejected',
-        managerId: managerUserForReimb.id,
-        managerApprovalDate: new Date('2025-01-09'),
-        managerComments: 'Not required',
-        accountantId: null,
-        accountantApprovalDate: null,
-        accountantComments: null,
-        createdAt: new Date('2025-01-08'),
-      },
-    ];
+    console.log('Creating sample reimbursements...');
+    
+    // Check if reimbursements already exist
+    const existingReimbs = await db.select().from(reimbursements);
+    if (existingReimbs.length > 0) {
+      console.log('Reimbursements already exist:', existingReimbs.length);
+    } else {
+      const sampleReimbursements = [
+        {
+          id: randomUUID(),
+          userId: johnDoe.id,
+          reimbursementTypeId: travelType.id,
+          date: '2025-01-15',
+          amount: '1500.00',
+          category: 'Client meeting travel expenses',
+          attachment: null,
+          status: 'Pending',
+          managerId: managerUserForReimb.id,
+          managerApprovalDate: null,
+          managerComments: null,
+          accountantId: null,
+          accountantApprovalDate: null,
+          accountantComments: null,
+          createdAt: new Date('2025-01-15'),
+        },
+        {
+          id: randomUUID(),
+          userId: johnDoe.id,
+          reimbursementTypeId: mealsType.id,
+          date: '2025-01-10',
+          amount: '850.00',
+          category: 'Team lunch with client',
+          attachment: null,
+          status: 'Manager Approved',
+          managerId: managerUserForReimb.id,
+          managerApprovalDate: new Date('2025-01-11'),
+          managerComments: 'Approved',
+          accountantId: null,
+          accountantApprovalDate: null,
+          accountantComments: null,
+          createdAt: new Date('2025-01-10'),
+        },
+        {
+          id: randomUUID(),
+          userId: adminUser.id,
+          reimbursementTypeId: officeSuppliesType.id,
+          date: '2025-01-05',
+          amount: '2500.00',
+          category: 'Office equipment purchase',
+          attachment: null,
+          status: 'Approved',
+          managerId: null,
+          managerApprovalDate: null,
+          managerComments: null,
+          accountantId: accountantUser.id,
+          accountantApprovalDate: new Date('2025-01-06'),
+          accountantComments: 'Approved by finance',
+          createdAt: new Date('2025-01-05'),
+        },
+        {
+          id: randomUUID(),
+          userId: johnDoe.id,
+          reimbursementTypeId: officeSuppliesType.id,
+          date: '2025-01-08',
+          amount: '500.00',
+          category: 'Office stationery',
+          attachment: null,
+          status: 'Rejected',
+          managerId: managerUserForReimb.id,
+          managerApprovalDate: new Date('2025-01-09'),
+          managerComments: 'Not required',
+          accountantId: null,
+          accountantApprovalDate: null,
+          accountantComments: null,
+          createdAt: new Date('2025-01-08'),
+        },
+      ];
 
-    for (const reimb of sampleReimbursements) {
-      await db.insert(reimbursements).values(reimb);
+      for (const reimb of sampleReimbursements) {
+        await db.insert(reimbursements).values(reimb);
+      }
+      
+      console.log('Sample reimbursements created successfully:', sampleReimbursements.length);
     }
+  } else {
+    console.log('Skipping reimbursement creation - missing required users or types');
+    console.log('johnDoe:', !!johnDoe, 'manager:', !!managerUserForReimb, 'accountant:', !!accountantUser, 'admin:', !!adminUser);
+    console.log('travelType:', !!travelType, 'mealsType:', !!mealsType, 'officeSuppliesType:', !!officeSuppliesType);
   }
 
   console.log('Database seeded successfully!');

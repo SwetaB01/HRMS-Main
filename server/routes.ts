@@ -1818,16 +1818,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
+      console.log('Reimbursements API - userId:', userId, 'userRole:', userRole?.accessLevel);
+
       // Managers, HR, Accountants, and Admins can view all reimbursements; employees view their own
       const canViewAll = ['Admin', 'HR', 'Manager', 'Accountant'].includes(userRole?.accessLevel || '');
 
       let reimbursements;
       if (canViewAll) {
         // For elevated roles, get all reimbursements
+        console.log('User can view all reimbursements, fetching...');
         reimbursements = await storage.getAllReimbursements();
         console.log('Fetched all reimbursements:', reimbursements.length);
       } else {
         // For employees, only show their own
+        console.log('User can only view own reimbursements, fetching for userId:', userId);
         reimbursements = await storage.getReimbursementsByUser(userId);
         console.log('Fetched user reimbursements:', reimbursements.length, 'for user:', userId);
       }
