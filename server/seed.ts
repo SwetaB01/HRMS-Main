@@ -501,6 +501,23 @@ export async function seedDatabase() {
         accountantComments: 'Approved by finance',
         createdAt: new Date('2025-01-05'),
       },
+      {
+        id: randomUUID(),
+        userId: johnDoe.id,
+        reimbursementTypeId: officeSuppliesType.id,
+        date: '2025-01-08',
+        amount: '500.00',
+        category: 'Office stationery',
+        attachment: null,
+        status: 'Rejected',
+        managerId: managerUserForReimb.id,
+        managerApprovalDate: new Date('2025-01-09'),
+        managerComments: 'Not required',
+        accountantId: null,
+        accountantApprovalDate: null,
+        accountantComments: null,
+        createdAt: new Date('2025-01-08'),
+      },
     ];
 
     for (const reimb of sampleReimbursements) {
