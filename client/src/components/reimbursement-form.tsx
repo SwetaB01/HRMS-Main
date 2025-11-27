@@ -44,9 +44,11 @@ interface ReimbursementFormProps {
 export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
-  const { data: reimbursementTypes } = useQuery<ReimbursementType[]>({
+  const { data: reimbursementTypes, isLoading: isLoadingTypes, error: typesError } = useQuery<ReimbursementType[]>({
     queryKey: ["/api/reimbursement-types"],
   });
+
+  console.log('Reimbursement types:', { reimbursementTypes, isLoadingTypes, typesError });
 
   const form = useForm<ReimbursementFormData>({
     resolver: zodResolver(reimbursementFormSchema),

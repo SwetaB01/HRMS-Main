@@ -395,5 +395,46 @@ export async function seedDatabase() {
     }
   }
 
-  console.log('Database seeding completed!');
+  // Create holiday types
+  await storage.createHolidayType({
+    name: 'National Holiday',
+    description: 'Public holidays declared by the government',
+  });
+
+  await storage.createHolidayType({
+    name: 'Company Holiday',
+    description: 'Holidays specific to the company',
+  });
+
+  // Create reimbursement types
+  const reimbTypes = await storage.getAllReimbursementTypes();
+  if (reimbTypes.length === 0) {
+    await storage.createReimbursementType({
+      name: 'Travel',
+    });
+
+    await storage.createReimbursementType({
+      name: 'Meals & Entertainment',
+    });
+
+    await storage.createReimbursementType({
+      name: 'Office Supplies',
+    });
+
+    await storage.createReimbursementType({
+      name: 'Accommodation',
+    });
+
+    await storage.createReimbursementType({
+      name: 'Phone & Internet',
+    });
+
+    await storage.createReimbursementType({
+      name: 'Others',
+    });
+
+    console.log('Reimbursement types created');
+  }
+
+  console.log('Database seeded successfully!');
 }

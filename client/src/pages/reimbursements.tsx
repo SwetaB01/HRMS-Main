@@ -32,9 +32,11 @@ export default function Reimbursements() {
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: reimbursements, isLoading } = useQuery<Reimbursement[]>({
+  const { data: reimbursements, isLoading, error } = useQuery<Reimbursement[]>({
     queryKey: ["/api/reimbursements"],
   });
+
+  console.log('Reimbursements data:', { reimbursements, isLoading, error });
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
