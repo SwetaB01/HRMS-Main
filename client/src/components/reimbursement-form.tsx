@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { ReimbursementType } from "@shared/schema";
 
 const reimbursementFormSchema = z.object({
   reimbursementTypeId: z.string().min(1, "Category is required"),
@@ -37,6 +40,10 @@ interface ReimbursementFormProps {
 
 export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+
+  const { data: reimbursementTypes } = useQuery<ReimbursementType[]>({
+    queryKey: ["/api/reimbursement-types"],
+  });
 
   const form = useForm<ReimbursementFormData>({
     resolver: zodResolver(reimbursementFormSchema),
@@ -100,12 +107,17 @@ export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="travel">Travel</SelectItem>
-                  <SelectItem value="meals">Meals & Entertainment</SelectItem>
-                  <SelectItem value="office-supplies">Office Supplies</SelectItem>
-                  <SelectItem value="accommodation">Accommodation</SelectItem>
-                  <SelectItem value="phone-internet">Phone & Internet</SelectItem>
-                  <SelectItem value="others">Others</SelectItem>
+                  {reimbursementTypes && reimbursementTypes.length > 0 ? (
+                    reimbursementTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-types" disabled>
+                      No reimbursement types available
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -179,7 +191,7 @@ export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
         <div className="flex justify-end gap-4">
           <Button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !reimbursementTypes || reimbursementTypes.length === 0}
             data-testid="button-submit-claim"
           >
             {isLoading ? "Submitting..." : "Submit Claim"}
