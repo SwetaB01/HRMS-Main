@@ -51,10 +51,8 @@ export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
   const handleSubmit = async (data: ReimbursementFormData) => {
     setIsLoading(true);
     try {
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
       const payload = {
         ...data,
-        userId: currentUser.id || 'admin-user',
         amount: parseFloat(data.amount),
         status: 'Pending',
         managerId: null,
@@ -69,11 +67,18 @@ export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit reimbursement');
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to submit reimbursement claim');
+        setIsLoading(false);
+        return;
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/reimbursements"] });
       onSuccess();
+    } catch (error) {
+      console.error('Error submitting reimbursement:', error);
+      alert('Failed to submit reimbursement claim');
+      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }

@@ -1838,12 +1838,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/reimbursements", requireAuth, async (req, res) => {
     try {
-      const validated = insertReimbursementSchema.parse(req.body);
+      const userId = req.session.userId!;
+      const { userId: _, ...reimbursementData } = req.body; // Remove userId from body if present
+      
+      // Get employee's manager
+      const employee = await storage.getUserProfile(userId);
+      let managerId = null;
+
+      // Get the employee's role to check their level
+      let employeeRole = null;
+      if (employee?.roleId) {
+        employeeRole = await storage.getUserRole(employee.roleId);
+      }
+
+      // If employee is Manager or has Manager access level, assign to Super Admin (Level 1)
+      if (employeeRole && (employeeRole.accessLevel === 'Manager' || employeeRole.level === 2)) {
+        const allEmployees = await storage.getAllUserProfiles();
+
+        // Find a Super Admin (Level 1) to approve the reimbursement
+        for (const emp of allEmployees) {
+          if (emp.roleId && emp.id !== userId) {
+            const role = await storage.getUserRole(emp.roleId);
+            if (role && role.level === 1 && role.accessLevel === 'Admin') {
+              managerId = emp.id;
+              break;
+            }
+          }
+        }
+      } else if (employee?.departmentId) {
+        // For other employees, find manager in the same department
+        const allEmployees = await storage.getAllUserProfiles();
+
+        for (const emp of allEmployees) {
+          if (emp.departmentId === employee.departmentId && 
+              emp.roleId && 
+              emp.id !== userId) {
+
+            // Check if this employee has a Manager role
+            const role = await storage.getUserRole(emp.roleId);
+            if (role && role.accessLevel === 'Manager') {
+              managerId = emp.id;
+              break;
+            }
+          }
+        }
+      }
+
+      // Fallback to direct manager if no department manager found
+      if (!managerId && employee?.managerId) {
+        managerId = employee.managerId;
+      }
+
+      const validated = insertReimbursementSchema.parse({
+        ...reimbursementData,
+        userId, // Use authenticated user's ID
+        managerId, // Set manager from department or direct manager
+      });
+      
       const reimbursement = await storage.createReimbursement(validated);
 
       // Send email notification to manager
       try {
-        const employee = await storage.getUserProfile(reimbursement.userId);
         const manager = reimbursement.managerId ? await storage.getUserProfile(reimbursement.managerId) : null;
         const reimbTypes = await storage.getAllReimbursementTypes();
         const reimbTypeName = reimbTypes.find(rt => rt.id === reimbursement.reimbursementTypeId)?.name || 'Expense';
@@ -1863,8 +1918,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.status(201).json(reimbursement);
-    } catch (error) {
-      res.status(400).json({ message: "Failed to create reimbursement" });
+    } catch (error: any) {
+      console.error('Reimbursement creation error:', error);
+      res.status(400).json({ message: error.message || "Failed to create reimbursement" });
     }
   });
 
