@@ -53,7 +53,7 @@ export function ReimbursementForm({ onSuccess }: ReimbursementFormProps) {
     try {
       const payload = {
         ...data,
-        amount: parseFloat(data.amount),
+        amount: data.amount, // Keep as string to match schema
         status: 'Pending',
         managerId: null,
         accountantId: null,
