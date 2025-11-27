@@ -396,17 +396,6 @@ export async function seedDatabase() {
     }
   }
 
-  // Create holiday types
-  await storage.createHolidayType({
-    name: 'National Holiday',
-    description: 'Public holidays declared by the government',
-  });
-
-  await storage.createHolidayType({
-    name: 'Company Holiday',
-    description: 'Holidays specific to the company',
-  });
-
   // Create reimbursement types
   const reimbTypes = await storage.getAllReimbursementTypes();
   if (reimbTypes.length === 0) {
