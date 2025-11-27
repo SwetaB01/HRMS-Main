@@ -93,6 +93,7 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
   const [location] = useLocation();
   const isAdminOrHR = currentUser?.accessLevel === 'Admin' || currentUser?.accessLevel === 'HR';
   const isManagerOrAdmin = currentUser?.accessLevel === 'Manager' || currentUser?.accessLevel === 'Admin';
+  const isAccountantOrAdmin = currentUser?.accessLevel === 'Accountant' || currentUser?.accessLevel === 'Admin';
 
   return (
     <Sidebar>
@@ -149,7 +150,17 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                   <SidebarMenuButton asChild isActive={location === "/approvals"}>
                     <Link href="/approvals">
                       <CheckSquare className="h-4 w-4" />
-                      <span>Approvals</span>
+                      <span>Leave Approvals</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {isAccountantOrAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location === "/reimbursement-approvals"}>
+                    <Link href="/reimbursement-approvals">
+                      <CheckSquare className="h-4 w-4" />
+                      <span>Reimbursement Approvals</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

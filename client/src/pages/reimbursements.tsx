@@ -28,6 +28,10 @@ import { ReimbursementForm } from "@/components/reimbursement-form";
 export default function Reimbursements() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
+  const { data: currentUser } = useQuery<any>({
+    queryKey: ["/api/auth/me"],
+  });
+
   const { data: reimbursements, isLoading } = useQuery<Reimbursement[]>({
     queryKey: ["/api/reimbursements"],
   });

@@ -28,7 +28,10 @@ import type { ReimbursementType } from "@shared/schema";
 const reimbursementFormSchema = z.object({
   reimbursementTypeId: z.string().min(1, "Category is required"),
   date: z.string().min(1, "Date is required"),
-  amount: z.string().min(1, "Amount is required"),
+  amount: z.string().min(1, "Amount is required").refine((val) => {
+    const num = parseFloat(val);
+    return !isNaN(num) && num > 0;
+  }, "Please enter a valid amount greater than zero"),
   category: z.string().min(1, "Category description is required"),
 });
 

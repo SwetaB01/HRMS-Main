@@ -16,7 +16,8 @@ import Attendance from "@/pages/attendance";
 import Leaves from "@/pages/leaves";
 import Approvals from "@/pages/approvals";
 import Holidays from "@/pages/holidays";
-import Reimbursements from "@/pages/reimbursements";
+import Reimbursements from "./pages/reimbursements";
+import ReimbursementApprovals from "./pages/reimbursement-approvals";
 import PayrollPage from "@/pages/payroll";
 import CompanySettings from "@/pages/company";
 import Reports from "@/pages/reports";
@@ -32,7 +33,8 @@ function Router({ currentUser, onLogout }: { currentUser: any; onLogout: () => v
       <Route path="/leaves" component={Leaves} />
       <Route path="/approvals" component={Approvals} />
       <Route path="/holidays" component={Holidays} />
-      <Route path="/reimbursements" component={Reimbursements} />
+      <Route path="/reimbursements" element={<Reimbursements />} />
+      <Route path="/reimbursement-approvals" element={<ReimbursementApprovals />} />
       <Route path="/payroll" component={PayrollPage} />
       <Route path="/company" component={CompanySettings} />
       <Route path="/reports" component={Reports} />
@@ -87,11 +89,11 @@ function App() {
 
     const user = await response.json();
     console.log('User logged in:', user);
-    
+
     // Clear any cached data
     queryClient.clear();
     localStorage.setItem('currentUser', JSON.stringify(user));
-    
+
     // Force a full page refresh to clear all state
     window.location.href = '/';
   };
@@ -102,11 +104,11 @@ function App() {
       method: 'POST',
       credentials: 'include'
     });
-    
+
     // Clear all cached data
     queryClient.clear();
     localStorage.removeItem('currentUser');
-    
+
     // Force a full page refresh to clear all state
     window.location.href = '/';
   };
