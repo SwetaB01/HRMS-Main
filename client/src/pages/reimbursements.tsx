@@ -32,10 +32,11 @@ export default function Reimbursements() {
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: reimbursements, isLoading, error } = useQuery<Reimbursement[]>({
+  const { data: reimbursements, isLoading, error, refetch } = useQuery<Reimbursement[]>({
     queryKey: ["/api/reimbursements"],
     staleTime: 0,
     refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   console.log('Reimbursements query state:', { 
@@ -43,7 +44,8 @@ export default function Reimbursements() {
     count: reimbursements?.length, 
     isLoading, 
     error,
-    currentUser: currentUser?.username 
+    currentUser: currentUser?.username,
+    data: reimbursements
   });
 
   // Safely handle undefined data
@@ -85,6 +87,7 @@ export default function Reimbursements() {
             <ReimbursementForm
               onSuccess={() => {
                 setIsAddDialogOpen(false);
+                refetch();
               }}
             />
           </DialogContent>
