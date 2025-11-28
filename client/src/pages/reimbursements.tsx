@@ -38,7 +38,6 @@ export default function Reimbursements() {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     retry: 3,
-    enabled: !!currentUser, // Only run query when user is loaded
   });
 
   console.log('Reimbursements query state:', { 
@@ -48,6 +47,7 @@ export default function Reimbursements() {
     error: error instanceof Error ? error.message : error,
     currentUser: currentUser?.username,
     currentUserRole: currentUser?.accessLevel,
+    queryExecuted: !isLoading && !error,
     data: reimbursements
   });
 
