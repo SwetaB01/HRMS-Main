@@ -73,28 +73,33 @@ export default function Reimbursements() {
             Submit and track expense reimbursements
           </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-submit-reimbursement">
-              <Plus className="h-4 w-4 mr-2" />
-              Submit Claim
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Submit Reimbursement</DialogTitle>
-              <DialogDescription>
-                Upload receipts and submit expense claim
-              </DialogDescription>
-            </DialogHeader>
-            <ReimbursementForm
-              onSuccess={() => {
-                setIsAddDialogOpen(false);
-                refetch();
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetch()}>
+            Refresh
+          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-submit-reimbursement">
+                <Plus className="h-4 w-4 mr-2" />
+                Submit Claim
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Submit Reimbursement</DialogTitle>
+                <DialogDescription>
+                  Upload receipts and submit expense claim
+                </DialogDescription>
+              </DialogHeader>
+              <ReimbursementForm
+                onSuccess={() => {
+                  setIsAddDialogOpen(false);
+                  refetch();
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
