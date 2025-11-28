@@ -1810,12 +1810,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reimbursement Routes
-  app.get("/api/reimbursements", async (req, res) => {
+  app.get("/api/reimbursements", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId;
-      const userRole = req.session.userRole;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
+      const userId = req.session.userId!;
+      let userRole = req.session.userRole;
+
+      // Fallback: fetch role from storage if not in session
+      if (!userRole) {
+        const user = await storage.getUserProfile(userId);
+        if (user?.roleId) {
+          const role = await storage.getUserRole(user.roleId);
+          if (role) {
+            userRole = {
+              accessLevel: role.accessLevel,
+              roleName: role.roleName
+            };
+            req.session.userRole = userRole;
+          }
+        }
       }
 
       console.log('Reimbursements API - userId:', userId, 'userRole:', userRole?.accessLevel);
@@ -1829,7 +1841,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('User can view all reimbursements, fetching...');
         reimbursements = await storage.getAllReimbursements();
         console.log('Fetched all reimbursements:', reimbursements.length);
-        console.log('Sample reimbursement:', reimbursements[0]);
+        if (reimbursements.length > 0) {
+          console.log('Sample reimbursement:', reimbursements[0]);
+        }
       } else {
         // For employees, only show their own
         console.log('User can only view own reimbursements, fetching for userId:', userId);
@@ -1838,7 +1852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log('Sending reimbursements response:', reimbursements.length, 'items');
-      res.json(reimbursements);
+      res.json(reimbursements || []);
     } catch (error) {
       console.error('Failed to fetch reimbursements:', error);
       res.status(500).json({ message: "Failed to fetch reimbursements" });
