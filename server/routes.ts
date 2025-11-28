@@ -1839,14 +1839,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (canViewAll) {
         // For elevated roles, get all reimbursements
         reimbursements = await storage.getAllReimbursements();
-        console.log('Returning all reimbursements:', reimbursements.length);
+        console.log('GET /api/reimbursements - Returning all reimbursements:', reimbursements.length);
       } else {
         // For employees, only show their own
         reimbursements = await storage.getReimbursementsByUser(userId);
-        console.log('Returning user reimbursements:', reimbursements.length);
+        console.log('GET /api/reimbursements - Returning user reimbursements for', userId, ':', reimbursements.length);
       }
 
-      res.json(reimbursements || []);
+      const response = reimbursements || [];
+      console.log('GET /api/reimbursements - Final response:', response.length, 'items');
+      res.json(response);
     } catch (error) {
       console.error('Failed to fetch reimbursements:', error);
       res.status(500).json({ message: "Failed to fetch reimbursements" });

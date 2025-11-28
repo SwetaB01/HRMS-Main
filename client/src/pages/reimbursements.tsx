@@ -32,10 +32,10 @@ export default function Reimbursements() {
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: reimbursements = [], isLoading, error } = useQuery<Reimbursement[]>({
+  const { data: reimbursements, isLoading, error } = useQuery<Reimbursement[]>({
     queryKey: ["/api/reimbursements"],
-    staleTime: 0, // Always fetch fresh data
-    refetchOnMount: true, // Refetch when component mounts
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   console.log('Reimbursements query state:', { 
@@ -45,6 +45,9 @@ export default function Reimbursements() {
     error,
     currentUser: currentUser?.username 
   });
+
+  // Safely handle undefined data
+  const reimbursementsList = reimbursements || [];
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
@@ -127,8 +130,8 @@ export default function Reimbursements() {
                       Error loading reimbursements: {error instanceof Error ? error.message : 'Unknown error'}
                     </TableCell>
                   </TableRow>
-                ) : reimbursements && reimbursements.length > 0 ? (
-                  reimbursements.map((claim) => (
+                ) : reimbursementsList.length > 0 ? (
+                  reimbursementsList.map((claim) => (
                     <TableRow key={claim.id} data-testid={`row-reimbursement-${claim.id}`}>
                       <TableCell>{claim.date}</TableCell>
                       <TableCell>{claim.category}</TableCell>
