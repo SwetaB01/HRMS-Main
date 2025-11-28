@@ -427,31 +427,57 @@ export async function seedDatabase() {
   }
 
   // Create sample reimbursements
-  const existingReimbursements = await db.select().from(reimbursements);
-  
+  console.log('Creating sample reimbursements...');
+  const existingReimbursements = await storage.getAllReimbursements();
+  console.log('Reimbursements already exist:', existingReimbursements.length);
+
   if (existingReimbursements.length === 0) {
-    const johnDoe = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'john.admin') });
-    const managerUserForReimb = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
-    const accountantUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') }); // Assuming admin is also accountant for seeding purposes
-    const adminUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') });
+    // Get the required data for creating reimbursements
+    const travelType = await storage.getAllReimbursementTypes().then(types =>
+      types.find(t => t.name === 'Travel')
+    );
+    const mealsType = await storage.getAllReimbursementTypes().then(types =>
+      types.find(t => t.name === 'Meals & Entertainment')
+    );
+    const officeSuppliesType = await storage.getAllReimbursementTypes().then(types =>
+      types.find(t => t.name === 'Office Supplies')
+    );
 
-    const reimbursementTypesTable = await db.select().from(reimbursementTypes);
-    const travelType = reimbursementTypesTable.find(t => t.name === 'Travel');
-    const mealsType = reimbursementTypesTable.find(t => t.name === 'Meals & Entertainment');
-    const officeSuppliesType = reimbursementTypesTable.find(t => t.name === 'Office Supplies');
+    if (!travelType || !mealsType || !officeSuppliesType) {
+      console.log('Reimbursement types not found, skipping reimbursement creation');
+      return;
+    }
 
-    if (johnDoe && managerUserForReimb && accountantUser && adminUser && travelType && mealsType && officeSuppliesType) {
+    // Get users for reimbursement data
+    const allUsers = await storage.getAllUserProfiles();
+    const adminUser = allUsers.find(u => u.username === 'admin');
+    const employeeUser = allUsers.find(u => u.username === 'employee');
+    
+    // Find a manager user for reimbursement approval
+    const managerUserForReimb = await storage.getAllUserProfiles().then(users =>
+      users.find(u => u.roleId === managerRole?.id)
+    );
+
+    // Find an accountant user
+    const [accountantRole] = await db.select().from(userRoles).where(eq(userRoles.roleName, 'Accountant'));
+    const accountantUser = accountantRole ? allUsers.find(u => u.roleId === accountantRole.id) : null;
+
+    if (!adminUser || !employeeUser) {
+      console.log('Required users not found, skipping reimbursement creation');
+      return;
+    }
+
     const sampleReimbursements = [
       {
         id: randomUUID(),
-        userId: johnDoe.id,
+        userId: employeeUser.id,
         reimbursementTypeId: travelType.id,
         date: '2025-01-15',
         amount: '1500.00',
         category: 'Client meeting travel expenses',
         attachment: null,
         status: 'Pending',
-        managerId: managerUserForReimb.id,
+        managerId: managerUserForReimb?.id || null,
         managerApprovalDate: null,
         managerComments: null,
         accountantId: null,
@@ -461,14 +487,14 @@ export async function seedDatabase() {
       },
       {
         id: randomUUID(),
-        userId: johnDoe.id,
+        userId: employeeUser.id,
         reimbursementTypeId: mealsType.id,
         date: '2025-01-10',
         amount: '850.00',
         category: 'Team lunch with client',
         attachment: null,
         status: 'Manager Approved',
-        managerId: managerUserForReimb.id,
+        managerId: managerUserForReimb?.id || null,
         managerApprovalDate: new Date('2025-01-11'),
         managerComments: 'Approved',
         accountantId: null,
@@ -488,21 +514,21 @@ export async function seedDatabase() {
         managerId: null,
         managerApprovalDate: null,
         managerComments: null,
-        accountantId: accountantUser.id,
+        accountantId: accountantUser?.id || null,
         accountantApprovalDate: new Date('2025-01-06'),
         accountantComments: 'Approved by finance',
         createdAt: new Date('2025-01-05'),
       },
       {
         id: randomUUID(),
-        userId: johnDoe.id,
+        userId: employeeUser.id,
         reimbursementTypeId: officeSuppliesType.id,
         date: '2025-01-08',
         amount: '500.00',
         category: 'Office stationery',
         attachment: null,
         status: 'Rejected',
-        managerId: managerUserForReimb.id,
+        managerId: managerUserForReimb?.id || null,
         managerApprovalDate: new Date('2025-01-09'),
         managerComments: 'Not required',
         accountantId: null,
@@ -513,9 +539,9 @@ export async function seedDatabase() {
     ];
 
     for (const reimb of sampleReimbursements) {
-        await db.insert(reimbursements).values(reimb);
-      }
+      await db.insert(reimbursements).values(reimb);
     }
+    console.log('Sample reimbursements created successfully');
   }
 
   console.log('Database seeded successfully!');

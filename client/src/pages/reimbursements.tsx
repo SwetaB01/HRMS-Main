@@ -34,13 +34,16 @@ export default function Reimbursements() {
 
   const { data: reimbursements = [], isLoading, error } = useQuery<Reimbursement[]>({
     queryKey: ["/api/reimbursements"],
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: true, // Refetch when component mounts
   });
 
-  console.log('Reimbursements data:', { 
+  console.log('Reimbursements query state:', { 
     reimbursements, 
     count: reimbursements?.length, 
     isLoading, 
-    error 
+    error,
+    currentUser: currentUser?.username 
   });
 
   const getStatusBadge = (status: string) => {

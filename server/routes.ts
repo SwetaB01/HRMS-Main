@@ -1830,7 +1830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('Reimbursements API - userId:', userId, 'userRole:', userRole?.accessLevel);
+      console.log('GET /api/reimbursements - userId:', userId, 'userRole:', userRole?.accessLevel);
 
       // Managers, HR, Accountants, and Admins can view all reimbursements; employees view their own
       const canViewAll = ['Admin', 'HR', 'Manager', 'Accountant'].includes(userRole?.accessLevel || '');
@@ -1838,20 +1838,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let reimbursements;
       if (canViewAll) {
         // For elevated roles, get all reimbursements
-        console.log('User can view all reimbursements, fetching...');
         reimbursements = await storage.getAllReimbursements();
-        console.log('Fetched all reimbursements:', reimbursements.length);
-        if (reimbursements.length > 0) {
-          console.log('Sample reimbursement:', reimbursements[0]);
-        }
+        console.log('Returning all reimbursements:', reimbursements.length);
       } else {
         // For employees, only show their own
-        console.log('User can only view own reimbursements, fetching for userId:', userId);
         reimbursements = await storage.getReimbursementsByUser(userId);
-        console.log('Fetched user reimbursements:', reimbursements.length, 'for user:', userId);
+        console.log('Returning user reimbursements:', reimbursements.length);
       }
 
-      console.log('Sending reimbursements response:', reimbursements.length, 'items');
       res.json(reimbursements || []);
     } catch (error) {
       console.error('Failed to fetch reimbursements:', error);
