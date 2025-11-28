@@ -1,5 +1,5 @@
 import { db } from './db';
-import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, departments } from '@shared/schema';
+import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, departments, reimbursements } from '@shared/schema';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { storage } from './storage';
@@ -427,17 +427,20 @@ export async function seedDatabase() {
   }
 
   // Create sample reimbursements
-  const johnDoe = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'john.admin') });
-  const managerUserForReimb = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
-  const accountantUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') }); // Assuming admin is also accountant for seeding purposes
-  const adminUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') });
+  const existingReimbursements = await db.select().from(reimbursements);
+  
+  if (existingReimbursements.length === 0) {
+    const johnDoe = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'john.admin') });
+    const managerUserForReimb = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'manager') });
+    const accountantUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') }); // Assuming admin is also accountant for seeding purposes
+    const adminUser = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'admin') });
 
-  const reimbursementTypesTable = await db.select().from(reimbursementTypes);
-  const travelType = reimbursementTypesTable.find(t => t.name === 'Travel');
-  const mealsType = reimbursementTypesTable.find(t => t.name === 'Meals & Entertainment');
-  const officeSuppliesType = reimbursementTypesTable.find(t => t.name === 'Office Supplies');
+    const reimbursementTypesTable = await db.select().from(reimbursementTypes);
+    const travelType = reimbursementTypesTable.find(t => t.name === 'Travel');
+    const mealsType = reimbursementTypesTable.find(t => t.name === 'Meals & Entertainment');
+    const officeSuppliesType = reimbursementTypesTable.find(t => t.name === 'Office Supplies');
 
-  if (johnDoe && managerUserForReimb && accountantUser && adminUser && travelType && mealsType && officeSuppliesType) {
+    if (johnDoe && managerUserForReimb && accountantUser && adminUser && travelType && mealsType && officeSuppliesType) {
     const sampleReimbursements = [
       {
         id: randomUUID(),
@@ -510,7 +513,8 @@ export async function seedDatabase() {
     ];
 
     for (const reimb of sampleReimbursements) {
-      await db.insert(reimbursements).values(reimb);
+        await db.insert(reimbursements).values(reimb);
+      }
     }
   }
 
