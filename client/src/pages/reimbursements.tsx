@@ -37,14 +37,17 @@ export default function Reimbursements() {
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    retry: 3,
+    enabled: !!currentUser, // Only run query when user is loaded
   });
 
   console.log('Reimbursements query state:', { 
     reimbursements, 
     count: reimbursements?.length, 
     isLoading, 
-    error,
+    error: error instanceof Error ? error.message : error,
     currentUser: currentUser?.username,
+    currentUserRole: currentUser?.accessLevel,
     data: reimbursements
   });
 

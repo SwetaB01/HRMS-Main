@@ -798,11 +798,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if employee is Manager or Project Management role
         if (employee?.roleId) {
           const employeeRole = await storage.getUserRole(employee.roleId);
-          
+
           // If Manager or Project Management, find Super Admin
           if (employeeRole && (employeeRole.accessLevel === 'Manager' || employeeRole.level === 2)) {
             const allEmployees = await storage.getAllUserProfiles();
-            
+
             for (const emp of allEmployees) {
               if (emp.roleId && emp.id !== userId) {
                 const role = await storage.getUserRole(emp.roleId);
@@ -1211,7 +1211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (let date = new Date(fromDate); date <= toDate; date.setDate(date.getDate() + 1)) {
         const dateStr = date.toISOString().split('T')[0];
-        
+
         // Check if this date falls within any holiday period
         for (const holiday of allHolidays) {
           const holidayFrom = new Date(holiday.fromDate);
@@ -1830,10 +1830,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      console.log('GET /api/reimbursements - Request received');
       console.log('GET /api/reimbursements - userId:', userId, 'userRole:', userRole?.accessLevel);
 
       // Managers, HR, Accountants, and Admins can view all reimbursements; employees view their own
       const canViewAll = ['Admin', 'HR', 'Manager', 'Accountant'].includes(userRole?.accessLevel || '');
+      console.log('GET /api/reimbursements - canViewAll:', canViewAll);
 
       let reimbursements;
       if (canViewAll) {
@@ -1848,6 +1850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const response = reimbursements || [];
       console.log('GET /api/reimbursements - Final response:', response.length, 'items');
+      console.log('GET /api/reimbursements - Response data:', JSON.stringify(response.slice(0, 2), null, 2));
       res.json(response);
     } catch (error) {
       console.error('Failed to fetch reimbursements:', error);
@@ -1859,7 +1862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.userId!;
       const { userId: _, ...reimbursementData } = req.body; // Remove userId from body if present
-      
+
       // Get employee's manager
       const employee = await storage.getUserProfile(userId);
       let managerId = null;
@@ -1913,7 +1916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId, // Use authenticated user's ID
         managerId, // Set manager from department or direct manager
       });
-      
+
       const reimbursement = await storage.createReimbursement(validated);
 
       // Send email notification to manager
