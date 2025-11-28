@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
+import { warmupDatabase, keepConnectionAlive } from "./db";
 
 const app = express();
 
@@ -48,6 +49,13 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Warm up database connection to avoid cold start latency
+  console.log('Warming up database connection...');
+  await warmupDatabase();
+  
+  // Start keep-alive pings to prevent cold starts
+  keepConnectionAlive();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

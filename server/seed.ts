@@ -520,6 +520,9 @@ export async function seedDatabase() {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1; // 1-12
   
+  // Get all active employees
+  const activeEmployees = await db.select().from(userProfiles).where(eq(userProfiles.status, 'Active'));
+  
   // Create payroll for the last 3 months for some employees
   const payrollEmployees = activeEmployees.slice(0, 5); // First 5 employees
   
