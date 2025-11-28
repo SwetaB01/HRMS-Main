@@ -514,5 +514,42 @@ export async function seedDatabase() {
     }
   }
 
+  // Create sample payroll records
+  console.log('Creating sample payroll records...');
+  
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1; // 1-12
+  
+  // Create payroll for the last 3 months for some employees
+  const payrollEmployees = activeEmployees.slice(0, 5); // First 5 employees
+  
+  for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
+    let month = currentMonth - monthOffset;
+    let year = currentYear;
+    
+    if (month <= 0) {
+      month += 12;
+      year -= 1;
+    }
+    
+    for (const employee of payrollEmployees) {
+      await storage.createPayroll({
+        userId: employee.id,
+        month,
+        year,
+        basicSalary: '50000',
+        allowances: '10000',
+        deductions: '5000',
+        reimbursements: '2000',
+        lopDays: '0',
+        lopAmount: '0',
+        netSalary: '57000',
+        status: month === currentMonth ? 'Draft' : 'Approved',
+        approvedBy: month === currentMonth ? null : adminUser.id,
+      });
+    }
+  }
+  
+  console.log('Sample payroll records created!');
   console.log('Database seeded successfully!');
 }
