@@ -1,45 +1,61 @@
 import { Switch, Route } from "wouter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import NotFound from "@/pages/not-found";
+import { Loader2 } from "lucide-react";
+
+// Only import login page directly (needed before auth)
 import LoginPage from "@/pages/login";
-import Dashboard from "@/pages/dashboard";
-import ProfilePage from "@/pages/profile";
-import Employees from "@/pages/employees";
-import Roles from "@/pages/roles";
-import Attendance from "@/pages/attendance";
-import Leaves from "@/pages/leaves";
-import Approvals from "@/pages/approvals";
-import Holidays from "@/pages/holidays";
-import Reimbursements from "./pages/reimbursements";
-import ReimbursementApprovals from "./pages/reimbursement-approvals";
-import PayrollPage from "@/pages/payroll";
-import CompanySettings from "@/pages/company";
-import Reports from "@/pages/reports";
+
+// Lazy load all other pages for better performance
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const ProfilePage = lazy(() => import("@/pages/profile"));
+const Employees = lazy(() => import("@/pages/employees"));
+const Roles = lazy(() => import("@/pages/roles"));
+const Attendance = lazy(() => import("@/pages/attendance"));
+const Leaves = lazy(() => import("@/pages/leaves"));
+const Approvals = lazy(() => import("@/pages/approvals"));
+const Holidays = lazy(() => import("@/pages/holidays"));
+const Reimbursements = lazy(() => import("./pages/reimbursements"));
+const ReimbursementApprovals = lazy(() => import("./pages/reimbursement-approvals"));
+const PayrollPage = lazy(() => import("@/pages/payroll"));
+const CompanySettings = lazy(() => import("@/pages/company"));
+const Reports = lazy(() => import("@/pages/reports"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+
+// Loading spinner component
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 function Router({ currentUser, onLogout }: { currentUser: any; onLogout: () => void }) {
   return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/profile" component={ProfilePage} />
-      <Route path="/employees" component={Employees} />
-      <Route path="/roles" component={Roles} />
-      <Route path="/attendance" component={Attendance} />
-      <Route path="/leaves" component={Leaves} />
-      <Route path="/approvals" component={Approvals} />
-      <Route path="/holidays" component={Holidays} />
-      <Route path="/reimbursements" element={<Reimbursements />} />
-      <Route path="/reimbursement-approvals" element={<ReimbursementApprovals />} />
-      <Route path="/payroll" component={PayrollPage} />
-      <Route path="/company" component={CompanySettings} />
-      <Route path="/reports" component={Reports} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense fallback={<PageLoader />}>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/profile" component={ProfilePage} />
+        <Route path="/employees" component={Employees} />
+        <Route path="/roles" component={Roles} />
+        <Route path="/attendance" component={Attendance} />
+        <Route path="/leaves" component={Leaves} />
+        <Route path="/approvals" component={Approvals} />
+        <Route path="/holidays" component={Holidays} />
+        <Route path="/reimbursements" component={Reimbursements} />
+        <Route path="/reimbursement-approvals" component={ReimbursementApprovals} />
+        <Route path="/payroll" component={PayrollPage} />
+        <Route path="/company" component={CompanySettings} />
+        <Route path="/reports" component={Reports} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 
