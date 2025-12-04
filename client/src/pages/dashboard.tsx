@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Calendar, Clock, AlertCircle, Receipt, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 
 interface DashboardStats {
   totalEmployees: number;
@@ -18,7 +18,7 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   
   const { data: currentUser } = useQuery<{
     id: string;
@@ -50,28 +50,28 @@ export default function Dashboard() {
           value: stats?.totalEmployees || 0,
           icon: Users,
           description: "Active in system",
-          onClick: () => navigate("/employees"),
+          onClick: () => setLocation("/employees"),
         },
         {
           title: "Present Today",
           value: stats?.presentToday || 0,
           icon: Calendar,
           description: "Checked in",
-          onClick: () => navigate("/attendance"),
+          onClick: () => setLocation("/attendance"),
         },
         {
           title: "On Leave",
           value: stats?.onLeave || 0,
           icon: Clock,
           description: "Today",
-          onClick: () => navigate("/leaves"),
+          onClick: () => setLocation("/leaves"),
         },
         {
           title: "Pending Approvals",
           value: (stats?.pendingApprovals || 0) + (stats?.pendingReimbursements || 0) + (stats?.pendingRegularizations || 0),
           icon: AlertCircle,
           description: "Requires action",
-          onClick: () => navigate("/approvals"),
+          onClick: () => setLocation("/approvals"),
         },
       ];
     } else if (isManager) {
@@ -81,28 +81,28 @@ export default function Dashboard() {
           value: stats?.totalEmployees || 0,
           icon: Users,
           description: "Team members",
-          onClick: () => navigate("/attendance"),
+          onClick: () => setLocation("/attendance"),
         },
         {
           title: "Present Today",
           value: stats?.presentToday || 0,
           icon: Calendar,
           description: "Team checked in",
-          onClick: () => navigate("/attendance"),
+          onClick: () => setLocation("/attendance"),
         },
         {
           title: "Pending Approvals",
           value: (stats?.pendingApprovals || 0) + (stats?.pendingReimbursements || 0) + (stats?.pendingRegularizations || 0),
           icon: AlertCircle,
           description: "Requires action",
-          onClick: () => navigate("/approvals"),
+          onClick: () => setLocation("/approvals"),
         },
         {
           title: "My Leave Balance",
           value: stats?.myLeaveBalance || 0,
           icon: Clock,
           description: "Days available",
-          onClick: () => navigate("/leaves"),
+          onClick: () => setLocation("/leaves"),
         },
       ];
     } else {
@@ -113,28 +113,28 @@ export default function Dashboard() {
           value: stats?.myAttendance || 0,
           icon: Calendar,
           description: "Days this month",
-          onClick: () => navigate("/attendance"),
+          onClick: () => setLocation("/attendance"),
         },
         {
           title: "Leave Balance",
           value: stats?.myLeaveBalance || 0,
           icon: Clock,
           description: "Days available",
-          onClick: () => navigate("/leaves"),
+          onClick: () => setLocation("/leaves"),
         },
         {
           title: "My Reimbursements",
           value: stats?.myReimbursements || 0,
           icon: Receipt,
           description: "Pending claims",
-          onClick: () => navigate("/reimbursements"),
+          onClick: () => setLocation("/reimbursements"),
         },
         {
           title: "Quick Actions",
           value: 3,
           icon: FileText,
           description: "Apply leave/claim",
-          onClick: () => navigate("/leaves"),
+          onClick: () => setLocation("/leaves"),
         },
       ];
     }
