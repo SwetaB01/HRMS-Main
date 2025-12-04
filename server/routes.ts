@@ -1884,24 +1884,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('GET /api/reimbursements - Request received');
       console.log('GET /api/reimbursements - userId:', userId, 'userRole:', userRole?.accessLevel);
 
-      // Managers, HR, Accountants, and Admins can view all reimbursements; employees view their own
-      const canViewAll = ['Admin', 'HR', 'Manager', 'Accountant'].includes(userRole?.accessLevel || '');
-      console.log('GET /api/reimbursements - canViewAll:', canViewAll);
-
       let reimbursements;
-      if (canViewAll) {
-        // For elevated roles, get all reimbursements
+      
+      if (userRole?.accessLevel === 'Admin' || userRole?.accessLevel === 'HR') {
+        // Admins and HR can view all reimbursements
         reimbursements = await storage.getAllReimbursements();
-        console.log('GET /api/reimbursements - Returning all reimbursements:', reimbursements.length);
+        console.log('GET /api/reimbursements - Admin/HR viewing all reimbursements:', reimbursements.length);
+      } else if (userRole?.accessLevel === 'Accountant') {
+        // Accountants can view all reimbursements for accounting approval
+        reimbursements = await storage.getAllReimbursements();
+        console.log('GET /api/reimbursements - Accountant viewing all reimbursements:', reimbursements.length);
+      } else if (userRole?.accessLevel === 'Manager') {
+        // Managers can only view reimbursements assigned to them and their own
+        const allReimbursements = await storage.getAllReimbursements();
+        reimbursements = allReimbursements.filter(r => 
+          r.managerId === userId || r.userId === userId
+        );
+        console.log('GET /api/reimbursements - Manager viewing assigned reimbursements:', reimbursements.length);
       } else {
-        // For employees, only show their own
+        // Employees only view their own
         reimbursements = await storage.getReimbursementsByUser(userId);
-        console.log('GET /api/reimbursements - Returning user reimbursements for', userId, ':', reimbursements.length);
+        console.log('GET /api/reimbursements - Employee viewing own reimbursements:', reimbursements.length);
       }
 
       const response = reimbursements || [];
       console.log('GET /api/reimbursements - Final response:', response.length, 'items');
-      console.log('GET /api/reimbursements - Response data:', JSON.stringify(response.slice(0, 2), null, 2));
       res.json(response);
     } catch (error) {
       console.error('Failed to fetch reimbursements:', error);

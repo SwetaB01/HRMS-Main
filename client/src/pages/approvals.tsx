@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -55,8 +54,29 @@ export default function Approvals() {
 
   const { data: reimbursements = [], isLoading: isLoadingReimbursements } = useQuery<Reimbursement[]>({
     queryKey: ["/api/reimbursements"],
-    enabled: currentUser?.accessLevel === 'Accountant' || currentUser?.accessLevel === 'Admin' || currentUser?.accessLevel === 'Manager',
+    enabled: !!currentUser,
   });
+
+  // Filter pending reimbursements based on user role
+  const pendingReimbursements = reimbursements?.filter(r => {
+    // Never show user's own reimbursements in approvals
+    if (r.userId === currentUser?.id) {
+      return false;
+    }
+
+    if (currentUser?.accessLevel === 'Accountant') {
+      // Accountants see only manager approved ones
+      return r.status === 'Manager Approved';
+    } else if (currentUser?.accessLevel === 'Admin') {
+      // Admins see all pending and manager approved
+      return r.status === 'Pending' || r.status === 'Manager Approved';
+    } else if (currentUser?.accessLevel === 'Manager') {
+      // Managers see only pending ones assigned to them
+      return r.status === 'Pending' && r.managerId === currentUser?.id;
+    }
+    return false;
+  }) || [];
+
 
   const { data: leaveTypes } = useQuery<any[]>({
     queryKey: ["/api/leave-types"],
@@ -81,22 +101,22 @@ export default function Approvals() {
     if (currentUser && currentUser.id === userId) {
       return `${currentUser.firstName} ${currentUser.lastName}`;
     }
-    
+
     if (!employees || employees.length === 0) {
       return "Employee";
     }
-    
+
     const employee = employees.find(emp => emp.id === userId);
     if (!employee) {
       return "Employee";
     }
-    
+
     return `${employee.firstName} ${employee.lastName}`;
   };
 
   const handleApproveLeave = async () => {
     if (!selectedLeave) return;
-    
+
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/leaves/${selectedLeave.id}/approve`, {
@@ -105,12 +125,12 @@ export default function Approvals() {
         credentials: "include",
         body: JSON.stringify({ comments }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to approve leave");
       }
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
       queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
       setIsApproveDialogOpen(false);
@@ -127,7 +147,7 @@ export default function Approvals() {
 
   const handleRejectLeave = async () => {
     if (!selectedLeave || !comments.trim()) return;
-    
+
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/leaves/${selectedLeave.id}/reject`, {
@@ -136,12 +156,12 @@ export default function Approvals() {
         credentials: "include",
         body: JSON.stringify({ comments }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to reject leave");
       }
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/approvals/leaves"] });
       queryClient.invalidateQueries({ queryKey: ["/api/leaves"] });
       setIsRejectDialogOpen(false);
@@ -158,7 +178,7 @@ export default function Approvals() {
 
   const handleApproveAttendance = async () => {
     if (!selectedAttendance) return;
-    
+
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/attendance/${selectedAttendance.id}/regularize/approve`, {
@@ -167,12 +187,12 @@ export default function Approvals() {
         credentials: "include",
         body: JSON.stringify({ comments }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to approve regularization");
       }
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
       setIsAttendanceApproveDialogOpen(false);
       setComments("");
@@ -188,7 +208,7 @@ export default function Approvals() {
 
   const handleRejectAttendance = async () => {
     if (!selectedAttendance || !comments.trim()) return;
-    
+
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/attendance/${selectedAttendance.id}/regularize/reject`, {
@@ -197,12 +217,12 @@ export default function Approvals() {
         credentials: "include",
         body: JSON.stringify({ comments }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to reject regularization");
       }
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
       setIsAttendanceRejectDialogOpen(false);
       setComments("");
@@ -218,25 +238,25 @@ export default function Approvals() {
 
   const handleApproveReimbursement = async (isManager: boolean) => {
     if (!selectedReimbursement) return;
-    
+
     setIsSubmitting(true);
     try {
       const endpoint = isManager 
         ? `/api/reimbursements/${selectedReimbursement.id}/approve-manager`
         : `/api/reimbursements/${selectedReimbursement.id}/approve-accountant`;
-      
+
       const response = await fetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ comments }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to approve reimbursement");
       }
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/reimbursements"] });
       setIsReimbApproveDialogOpen(false);
       setComments("");
@@ -252,7 +272,7 @@ export default function Approvals() {
 
   const handleRejectReimbursement = async () => {
     if (!selectedReimbursement || !comments.trim()) return;
-    
+
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/reimbursements/${selectedReimbursement.id}/reject`, {
@@ -261,12 +281,12 @@ export default function Approvals() {
         credentials: "include",
         body: JSON.stringify({ comments }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to reject reimbursement");
       }
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/reimbursements"] });
       setIsReimbRejectDialogOpen(false);
       setComments("");
@@ -298,10 +318,6 @@ export default function Approvals() {
 
   const pendingRegularizations = pendingAttendance?.filter(
     att => att.regularizationRequested && att.regularizationStatus === 'Pending'
-  ) || [];
-
-  const pendingReimbursements = reimbursements?.filter(r => 
-    r.status === 'Pending' || r.status === 'Manager Approved'
   ) || [];
 
   return (
