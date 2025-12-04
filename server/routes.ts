@@ -87,6 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const requireHROrAdmin = allowRoles('HR', 'Admin');
   const requireManagerOrHROrAdmin = allowRoles('Manager', 'HR', 'Admin');
   const requireAccountantOrAdmin = allowRoles('Accountant', 'Admin');
+  const requireManagerOrHROrAccountantOrAdmin = allowRoles('Manager', 'HR', 'Accountant', 'Admin');
 
   // Logout endpoint
   app.post("/api/auth/logout", async (req, res) => {
@@ -281,8 +282,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // Employee Management Routes - Managers, HR and Admin can view; HR and Admin can manage
-  app.get("/api/employees", requireManagerOrHROrAdmin, async (req, res) => {
+  // Employee Management Routes - Managers, HR, Accountant and Admin can view; HR and Admin can manage
+  app.get("/api/employees", requireManagerOrHROrAccountantOrAdmin, async (req, res) => {
     try {
       const employees = await storage.getAllUserProfiles();
 
@@ -2132,7 +2133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { comments } = req.body;
-      const accountantId = 'admin-user'; // In production, get from session
+      const accountantId = req.session.userId!;
 
       const reimbursement = await storage.approveReimbursementByAccountant(id, accountantId, comments);
       if (!reimbursement) {
@@ -2170,7 +2171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { comments } = req.body;
-      const userId = 'admin-user'; // In production, get from session
+      const userId = req.session.userId!;
 
       if (!comments) {
         return res.status(400).json({ message: "Comments are required for rejection" });
