@@ -329,6 +329,37 @@ export async function seedDatabase() {
     }
   }
 
+  // Create an Accountant user if not exists
+  const [accountantRole] = await db.select().from(userRoles).where(eq(userRoles.roleName, 'Accountant'));
+  const accountantUserExists = await db.query.userProfiles.findFirst({ 
+    where: (profiles, { or, eq }) => or(
+      eq(profiles.username, 'accountant'),
+      eq(profiles.email, 'accountant@midcai.com')
+    )
+  });
+  
+  if (accountantRole && !accountantUserExists) {
+    console.log('Creating accountant user...');
+    const hashedPassword = await bcrypt.hash('accountant123', 10);
+    const [accountsDept] = await db.select().from(departments).where(eq(departments.id, 'accounts'));
+    await db.insert(userProfiles).values({
+      roleId: accountantRole.id,
+      firstName: 'Sarah',
+      lastName: 'Accountant',
+      email: 'accountant@midcai.com',
+      username: 'accountant',
+      passwordHash: hashedPassword,
+      status: 'Active',
+      userType: 'Employee',
+      language: 'English',
+      timezone: 'Asia/Kolkata',
+      joiningDate: '2023-02-01',
+      departmentId: accountsDept ? accountsDept.id : null,
+      managerId: null,
+    });
+    console.log('Accountant user created: accountant / accountant123');
+  }
+
 
   // First, clean up any duplicate holidays in the database
   console.log('Checking for duplicate holidays...');
