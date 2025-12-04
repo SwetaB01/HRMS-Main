@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,6 +30,10 @@ export default function Employees() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<UserProfile | null>(null);
+  const [assigningLeaveFor, setAssigningLeaveFor] = useState<UserProfile | null>(null);
+  const [leaveTypeId, setLeaveTypeId] = useState("");
+  const [totalLeaves, setTotalLeaves] = useState("10");
+  const [leaveYear, setLeaveYear] = useState(new Date().getFullYear().toString());
   const { toast } = useToast();
 
   const { data: employees, isLoading } = useQuery<UserProfile[]>({
@@ -42,6 +46,10 @@ export default function Employees() {
 
   const { data: departments } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
+  });
+
+  const { data: leaveTypes } = useQuery<any[]>({
+    queryKey: ["/api/leave-types"],
   });
 
   const { data: currentUser, isLoading: isLoadingUser } = useQuery<{
@@ -89,6 +97,44 @@ export default function Employees() {
         title: "Success",
         description: "Employee deleted successfully",
       });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const assignLeaveMutation = useMutation({
+    mutationFn: async () => {
+      if (!assigningLeaveFor) throw new Error("No employee selected");
+      const response = await fetch("/api/leave-quota/assign-individual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          userId: assigningLeaveFor.id,
+          leaveTypeId: leaveTypeId,
+          totalLeaves: parseInt(totalLeaves),
+          year: parseInt(leaveYear),
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to assign leave quota");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Success",
+        description: data.message,
+      });
+      setAssigningLeaveFor(null);
+      setLeaveTypeId("");
+      setTotalLeaves("10");
     },
     onError: (error: Error) => {
       toast({
@@ -260,6 +306,14 @@ export default function Employees() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        title="Assign Leave Quota"
+                        onClick={() => setAssigningLeaveFor(employee)}
+                      >
+                        <CalendarDays className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         data-testid={`button-edit-${employee.id}`}
                         onClick={() => setEditingEmployee(employee)}
                       >
@@ -309,6 +363,71 @@ export default function Employees() {
                 });
               }}
             />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {assigningLeaveFor && (
+        <Dialog open={!!assigningLeaveFor} onOpenChange={() => setAssigningLeaveFor(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Assign Leave Quota</DialogTitle>
+              <DialogDescription>
+                Assign leave quota to {assigningLeaveFor.firstName} {assigningLeaveFor.lastName}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Leave Type</label>
+                <select
+                  className="w-full mt-1 p-2 border rounded-md"
+                  value={leaveTypeId}
+                  onChange={(e) => setLeaveTypeId(e.target.value)}
+                >
+                  <option value="">Select leave type</option>
+                  {leaveTypes?.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Total Leaves</label>
+                <input
+                  type="number"
+                  className="w-full mt-1 p-2 border rounded-md"
+                  value={totalLeaves}
+                  onChange={(e) => setTotalLeaves(e.target.value)}
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Year</label>
+                <input
+                  type="number"
+                  className="w-full mt-1 p-2 border rounded-md"
+                  value={leaveYear}
+                  onChange={(e) => setLeaveYear(e.target.value)}
+                  min="2020"
+                  max="2030"
+                />
+              </div>
+              <div className="flex justify-end gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setAssigningLeaveFor(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => assignLeaveMutation.mutate()}
+                  disabled={!leaveTypeId || assignLeaveMutation.isPending}
+                >
+                  {assignLeaveMutation.isPending ? "Assigning..." : "Assign Quota"}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}
