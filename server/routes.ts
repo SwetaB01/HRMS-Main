@@ -1763,6 +1763,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Assign leave quota to individual employee - HR and Admin only
+  app.post("/api/leave-quota/assign-individual", requireHROrAdmin, async (req, res) => {
+    try {
+      const { userId, leaveTypeId, totalLeaves, year } = req.body;
+
+      if (!userId || !leaveTypeId || !totalLeaves || !year) {
+        return res.status(400).json({ 
+          message: "User ID, leave type, total leaves, and year are required" 
+        });
+      }
+
+      // Verify employee exists
+      const employee = await storage.getUserProfile(userId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      // Check if ledger entry already exists
+      const existingLedger = await storage.getLeaveLedgerByUserAndType(
+        userId, 
+        leaveTypeId, 
+        year
+      );
+
+      let result;
+      if (existingLedger) {
+        // Update existing ledger
+        result = await storage.updateLeaveLedger(existingLedger.id, {
+          totalLeaves: totalLeaves.toString(),
+        });
+      } else {
+        // Create new ledger entry
+        result = await storage.createLeaveLedger({
+          userId,
+          leaveTypeId,
+          totalLeaves: totalLeaves.toString(),
+          usedLeaves: "0",
+          year,
+        });
+      }
+
+      res.json({
+        message: `Leave quota assigned to ${employee.firstName} ${employee.lastName}`,
+        ledger: result,
+      });
+    } catch (error: any) {
+      console.error('Failed to assign individual leave quota:', error);
+      res.status(500).json({ message: error.message || "Failed to assign leave quota" });
+    }
+  });
+
   // Holiday Routes - All authenticated users can view
   app.get("/api/holidays", requireAuth, async (req, res) => {
     try {
