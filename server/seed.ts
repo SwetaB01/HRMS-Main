@@ -242,7 +242,15 @@ export async function seedDatabase() {
 
   // Create a regular Employee user if not exists, or update existing one with department
   const [employeeRole] = await db.select().from(userRoles).where(eq(userRoles.roleName, 'Employee'));
-  const employeeUserExists = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, 'employee') });
+  
+  // Check by both username and email to avoid duplicate key violations
+  const employeeUserExists = await db.query.userProfiles.findFirst({ 
+    where: (profiles, { or, eq }) => or(
+      eq(profiles.username, 'employee'),
+      eq(profiles.email, 'employee@midcai.com')
+    )
+  });
+  
   if (employeeRole && !employeeUserExists) {
     console.log('Creating employee user...');
     const hashedPassword = await bcrypt.hash('employee123', 10);
@@ -281,7 +289,14 @@ export async function seedDatabase() {
   ];
 
   for (const emp of additionalEmployees) {
-    const existingEmployee = await db.query.userProfiles.findFirst({ where: eq(userProfiles.username, emp.username) });
+    // Check by both username and email to avoid duplicate key violations
+    const existingEmployee = await db.query.userProfiles.findFirst({ 
+      where: (profiles, { or, eq }) => or(
+        eq(profiles.username, emp.username),
+        eq(profiles.email, emp.email)
+      )
+    });
+    
     if (employeeRole && !existingEmployee) {
       console.log(`Creating employee ${emp.username}...`);
       const hashedPassword = await bcrypt.hash('employee123', 10);
