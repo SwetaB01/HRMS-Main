@@ -24,14 +24,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Reimbursement, ReimbursementType } from "@shared/schema";
 
 export default function Approvals() {
   const [selectedLeave, setSelectedLeave] = useState<any>(null);
   const [selectedAttendance, setSelectedAttendance] = useState<any>(null);
+  const [selectedReimbursement, setSelectedReimbursement] = useState<any>(null);
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [isAttendanceApproveDialogOpen, setIsAttendanceApproveDialogOpen] = useState(false);
   const [isAttendanceRejectDialogOpen, setIsAttendanceRejectDialogOpen] = useState(false);
+  const [isReimbApproveDialogOpen, setIsReimbApproveDialogOpen] = useState(false);
+  const [isReimbRejectDialogOpen, setIsReimbRejectDialogOpen] = useState(false);
   const [comments, setComments] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,8 +53,17 @@ export default function Approvals() {
     enabled: currentUser?.accessLevel === 'Manager' || currentUser?.accessLevel === 'Admin',
   });
 
+  const { data: reimbursements = [], isLoading: isLoadingReimbursements } = useQuery<Reimbursement[]>({
+    queryKey: ["/api/reimbursements"],
+    enabled: currentUser?.accessLevel === 'Accountant' || currentUser?.accessLevel === 'Admin' || currentUser?.accessLevel === 'Manager',
+  });
+
   const { data: leaveTypes } = useQuery<any[]>({
     queryKey: ["/api/leave-types"],
+  });
+
+  const { data: reimbursementTypes } = useQuery<ReimbursementType[]>({
+    queryKey: ["/api/reimbursement-types"],
   });
 
   const { data: employees } = useQuery<any[]>({
@@ -203,10 +216,80 @@ export default function Approvals() {
     }
   };
 
+  const handleApproveReimbursement = async (isManager: boolean) => {
+    if (!selectedReimbursement) return;
+    
+    setIsSubmitting(true);
+    try {
+      const endpoint = isManager 
+        ? `/api/reimbursements/${selectedReimbursement.id}/approve-manager`
+        : `/api/reimbursements/${selectedReimbursement.id}/approve-accountant`;
+      
+      const response = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ comments }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to approve reimbursement");
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/reimbursements"] });
+      setIsReimbApproveDialogOpen(false);
+      setComments("");
+      setSelectedReimbursement(null);
+      alert('Reimbursement approved successfully!');
+    } catch (error: any) {
+      console.error('Failed to approve reimbursement:', error);
+      alert(error.message || 'Failed to approve reimbursement. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectReimbursement = async () => {
+    if (!selectedReimbursement || !comments.trim()) return;
+    
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/reimbursements/${selectedReimbursement.id}/reject`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ comments }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to reject reimbursement");
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/reimbursements"] });
+      setIsReimbRejectDialogOpen(false);
+      setComments("");
+      setSelectedReimbursement(null);
+      alert('Reimbursement rejected successfully!');
+    } catch (error: any) {
+      console.error('Failed to reject reimbursement:', error);
+      alert(error.message || 'Failed to reject reimbursement. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getReimbursementTypeName = (typeId: string) => {
+    const type = reimbursementTypes?.find(t => t.id === typeId);
+    return type?.name || typeId;
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       "Open": "secondary",
       "Pending": "secondary",
+      "Manager Approved": "default",
       "Approved": "default",
       "Rejected": "destructive",
     };
@@ -217,13 +300,17 @@ export default function Approvals() {
     att => att.regularizationRequested && att.regularizationStatus === 'Pending'
   ) || [];
 
+  const pendingReimbursements = reimbursements?.filter(r => 
+    r.status === 'Pending' || r.status === 'Manager Approved'
+  ) || [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold mb-1">Approvals</h1>
           <p className="text-muted-foreground">
-            Review and approve pending leave applications and attendance regularizations
+            Review and approve pending leave requests, attendance regularizations, and reimbursements
           </p>
         </div>
       </div>
@@ -235,6 +322,9 @@ export default function Approvals() {
           </TabsTrigger>
           <TabsTrigger value="attendance">
             Attendance Regularizations ({pendingRegularizations.length})
+          </TabsTrigger>
+          <TabsTrigger value="reimbursements">
+            Reimbursements ({pendingReimbursements.length})
           </TabsTrigger>
         </TabsList>
 
@@ -410,6 +500,91 @@ export default function Approvals() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="reimbursements" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Reimbursements ({pendingReimbursements.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoadingReimbursements ? (
+                      <>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <TableRow key={i}>
+                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                            <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    ) : pendingReimbursements.length > 0 ? (
+                      pendingReimbursements.map((reimb) => (
+                        <TableRow key={reimb.id}>
+                          <TableCell>{getEmployeeName(reimb.userId)}</TableCell>
+                          <TableCell>{getReimbursementTypeName(reimb.reimbursementTypeId)}</TableCell>
+                          <TableCell>{reimb.date}</TableCell>
+                          <TableCell>₹{reimb.amount}</TableCell>
+                          <TableCell className="max-w-xs truncate">{reimb.category}</TableCell>
+                          <TableCell>{getStatusBadge(reimb.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => {
+                                  setSelectedReimbursement(reimb);
+                                  setIsReimbApproveDialogOpen(true);
+                                }}
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  setSelectedReimbursement(reimb);
+                                  setIsReimbRejectDialogOpen(true);
+                                }}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          No pending reimbursements
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Leave Approve Dialog */}
@@ -553,6 +728,84 @@ export default function Approvals() {
               <Button
                 variant="destructive"
                 onClick={handleRejectAttendance}
+                disabled={isSubmitting || !comments.trim()}
+              >
+                {isSubmitting ? "Rejecting..." : "Reject"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reimbursement Approve Dialog */}
+      <Dialog open={isReimbApproveDialogOpen} onOpenChange={setIsReimbApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Reimbursement</DialogTitle>
+            <DialogDescription>
+              Add optional comments for the employee
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Comments (optional)"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+            />
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsReimbApproveDialogOpen(false);
+                  setComments("");
+                  setSelectedReimbursement(null);
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => handleApproveReimbursement(selectedReimbursement?.status === 'Pending')} 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Approving..." : "Approve"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reimbursement Reject Dialog */}
+      <Dialog open={isReimbRejectDialogOpen} onOpenChange={setIsReimbRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Reimbursement</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejection
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Reason for rejection *"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              required
+            />
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsReimbRejectDialogOpen(false);
+                  setComments("");
+                  setSelectedReimbursement(null);
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleRejectReimbursement}
                 disabled={isSubmitting || !comments.trim()}
               >
                 {isSubmitting ? "Rejecting..." : "Reject"}

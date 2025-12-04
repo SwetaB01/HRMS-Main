@@ -146,32 +146,12 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {isManagerOrAdmin && (
+              {(isManagerOrAdmin || isAccountantOrAdmin) && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={location === "/approvals"}>
                     <Link href="/approvals">
                       <CheckSquare className="h-4 w-4" />
                       <span>Approvals</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {isManagerOrAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/leave-approvals"}>
-                    <Link href="/leave-approvals">
-                      <CalendarDays className="h-4 w-4" />
-                      <span>Leave Approvals</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {isAccountantOrAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/reimbursement-approvals"}>
-                    <Link href="/reimbursement-approvals">
-                      <CheckSquare className="h-4 w-4" />
-                      <span>Reimbursement Approvals</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
