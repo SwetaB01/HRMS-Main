@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   User,
   CheckSquare,
+  CheckCircle2, // Import CheckCircle2 for the existing Approvals link
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -150,6 +151,16 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                   <SidebarMenuButton asChild isActive={location === "/approvals"}>
                     <Link href="/approvals">
                       <CheckSquare className="h-4 w-4" />
+                      <span>Approvals</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {isManagerOrAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location === "/leave-approvals"}>
+                    <Link href="/leave-approvals">
+                      <CalendarDays className="h-4 w-4" />
                       <span>Leave Approvals</span>
                     </Link>
                   </SidebarMenuButton>

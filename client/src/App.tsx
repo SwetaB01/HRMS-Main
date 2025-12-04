@@ -19,6 +19,7 @@ const Roles = lazy(() => import("@/pages/roles"));
 const Attendance = lazy(() => import("@/pages/attendance"));
 const Leaves = lazy(() => import("@/pages/leaves"));
 const Approvals = lazy(() => import("@/pages/approvals"));
+const LeaveApprovals = lazy(() => import("@/pages/leave-approvals"));
 const Holidays = lazy(() => import("@/pages/holidays"));
 const Reimbursements = lazy(() => import("./pages/reimbursements"));
 const ReimbursementApprovals = lazy(() => import("./pages/reimbursement-approvals"));
@@ -47,6 +48,7 @@ function Router({ currentUser, onLogout }: { currentUser: any; onLogout: () => v
         <Route path="/attendance" component={Attendance} />
         <Route path="/leaves" component={Leaves} />
         <Route path="/approvals" component={Approvals} />
+        <Route path="/leave-approvals" component={LeaveApprovals} />
         <Route path="/holidays" component={Holidays} />
         <Route path="/reimbursements" component={Reimbursements} />
         <Route path="/reimbursement-approvals" component={ReimbursementApprovals} />
