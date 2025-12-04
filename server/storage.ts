@@ -76,6 +76,7 @@ export interface IStorage {
   // Attendance Operations
   getAttendance(id: string): Promise<Attendance | undefined>;
   getAttendanceByUser(userId: string, fromDate?: string, toDate?: string): Promise<Attendance[]>;
+  getAllAttendance(): Promise<Attendance[]>;
   getAttendanceByDate(userId: string, date: string): Promise<Attendance | undefined>;
   getTodayAttendance(userId: string): Promise<Attendance | undefined>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
