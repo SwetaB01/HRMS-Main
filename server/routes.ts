@@ -477,10 +477,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard Routes - All authenticated users can view
   app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats();
-      res.json(stats);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+      const userId = req.session.userId!;
+      const employee = await storage.getUserProfile(userId);
+
+      let role = null;
+      if (employee?.roleId) {
+        role = await storage.getUserRole(employee.roleId);
+      }
+
+      const allEmployees = await storage.getAllUserProfiles();
+      const totalEmployees = allEmployees.length;
+
+      // Get today's attendance
+      const today = new Date().toISOString().split('T')[0];
+      const allAttendance = await storage.getAllAttendance();
+      const todayAttendance = allAttendance.filter(a => 
+        a.checkInTime && a.checkInTime.toISOString().split('T')[0] === today
+      );
+      const presentToday = todayAttendance.length;
+
+      // Get today's leaves
+      const allLeaves = await storage.getAllLeaves();
+      const todayLeaves = allLeaves.filter(leave => {
+        if (leave.status !== "Approved") return false;
+        const leaveStart = new Date(leave.fromDate);
+        const leaveEnd = new Date(leave.toDate);
+        const todayDate = new Date(today);
+        return todayDate >= leaveStart && todayDate <= leaveEnd;
+      });
+      const onLeave = todayLeaves.length;
+
+      // Get pending approvals for managers
+      let pendingApprovals = 0;
+      let pendingReimbursements = 0;
+      let pendingRegularizations = 0;
+      let myLeaveBalance = 0;
+      let myReimbursements = 0;
+      let myAttendance = 0;
+
+      if (role && (role.accessLevel === 'Manager' || role.accessLevel === 'Admin')) {
+        const pendingLeaves = allLeaves.filter(leave => leave.status === "Open");
+        pendingApprovals = pendingLeaves.length;
+
+        const allReimbursements = await storage.getAllReimbursements();
+        const pendingReimb = allReimbursements.filter(r => r.status === "Open");
+        pendingReimbursements = pendingReimb.length;
+
+        const pendingAtt = allAttendance.filter(a => 
+          a.status === "Pending" && a.checkInTime === null
+        );
+        pendingRegularizations = pendingAtt.length;
+      }
+
+      // Employee-specific stats
+      const currentYear = new Date().getFullYear();
+      const leaveLedgers = await storage.getLeaveLedgerByUser(userId, currentYear);
+      myLeaveBalance = leaveLedgers.reduce((sum, ledger) => {
+        const total = parseFloat(ledger.totalLeaves || "0");
+        const used = parseFloat(ledger.usedLeaves || "0");
+        return sum + (total - used);
+      }, 0);
+
+      // My reimbursements (pending)
+      const allReimbursements = await storage.getAllReimbursements();
+      myReimbursements = allReimbursements.filter(r => 
+        r.userId === userId && r.status === "Open"
+      ).length;
+
+      // My attendance this month
+      const currentMonth = new Date().getMonth();
+      const currentMonthYear = new Date().getFullYear();
+      myAttendance = allAttendance.filter(a => {
+        if (a.userId !== userId || !a.checkInTime) return false;
+        const attDate = new Date(a.checkInTime);
+        return attDate.getMonth() === currentMonth && attDate.getFullYear() === currentMonthYear;
+      }).length;
+
+      res.json({
+        totalEmployees,
+        presentToday,
+        onLeave,
+        pendingApprovals,
+        pendingReimbursements,
+        pendingRegularizations,
+        myLeaveBalance,
+        myReimbursements,
+        myAttendance,
+      });
+    } catch (error: any) {
+      console.error('Failed to fetch dashboard stats:', error);
+      res.status(500).json({ message: error.message || "Failed to fetch dashboard stats" });
     }
   });
 
@@ -1885,7 +1971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('GET /api/reimbursements - userId:', userId, 'userRole:', userRole?.accessLevel);
 
       let reimbursements;
-      
+
       if (userRole?.accessLevel === 'Admin' || userRole?.accessLevel === 'HR') {
         // Admins and HR can view all reimbursements
         reimbursements = await storage.getAllReimbursements();
