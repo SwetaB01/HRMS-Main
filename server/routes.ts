@@ -2219,34 +2219,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Payroll Routes - Employees can view own, HR/Accountant/Admin can manage
-  app.get("/api/payroll", requireAuth, async (req, res) => {
+  // Payroll Routes - Only Super Admin can access
+  app.get("/api/payroll", requireAdmin, async (req, res) => {
     try {
-      const userId = req.session.userId;
-      const userRole = req.session.userRole;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
-      // HR, Accountants, and Admins can view all payrolls; Managers and employees view their own only
-      const canViewAll = ['Admin', 'HR', 'Accountant'].includes(userRole?.accessLevel || '');
-
-      let payrolls;
-      if (canViewAll) {
-        // For elevated roles, get all payrolls
-        payrolls = await storage.getAllPayrolls();
-      } else {
-        // For employees, only show their own
-        payrolls = await storage.getPayrollsByUser(userId);
-      }
-
+      // Only Super Admin can view all payrolls
+      const payrolls = await storage.getAllPayrolls();
       res.json(payrolls);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch payroll" });
     }
   });
 
-  app.post("/api/payroll/generate", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
+  app.post("/api/payroll/generate", requireAdmin, async (req, res) => {
     try {
       const { userId, month, year } = req.body;
 
@@ -2264,7 +2248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/payroll/generate-bulk", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
+  app.post("/api/payroll/generate-bulk", requireAdmin, async (req, res) => {
     try {
       const { month, year } = req.body;
 
@@ -2306,7 +2290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/payroll", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
+  app.post("/api/payroll", requireAdmin, async (req, res) => {
     try {
       const validated = insertPayrollSchema.parse(req.body);
       const payroll = await storage.createPayroll(validated);
@@ -2316,7 +2300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/payroll/:id/approve", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
+  app.patch("/api/payroll/:id/approve", requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const approverId = 'admin-user'; // In production, get from session

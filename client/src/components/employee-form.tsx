@@ -22,6 +22,8 @@ import {
 import { UserProfile, Department, UserRole } from "@shared/schema";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Plus, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const employeeFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -57,6 +59,11 @@ interface EmployeeFormProps {
 export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(employee?.photo || null);
+  const [salaryComponents, setSalaryComponents] = useState<Array<{
+    componentId: string;
+    amount: string;
+  }>>([]);
+  const { toast } = useToast();
 
   const { data: departments } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
@@ -64,6 +71,10 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
 
   const { data: roles } = useQuery<UserRole[]>({
     queryKey: ["/api/roles"],
+  });
+
+  const { data: availableComponents } = useQuery<any[]>({
+    queryKey: ["/api/salary-components"],
   });
 
   const form = useForm<EmployeeFormData>({
@@ -160,6 +171,42 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
         }
 
         throw new Error(error.message || 'Failed to save employee');
+      }
+
+      const savedEmployee = await response.json();
+
+      // If creating new employee and salary components are defined, assign them
+      if (!employee && salaryComponents.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        
+        for (const component of salaryComponents) {
+          if (component.componentId && component.amount) {
+            try {
+              const compResponse = await fetch(`/api/employees/${savedEmployee.id}/compensation`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  componentId: component.componentId,
+                  amount: component.amount,
+                  effectiveFrom: today,
+                  isActive: true,
+                }),
+              });
+
+              if (!compResponse.ok) {
+                const error = await compResponse.json();
+                console.error('Failed to assign salary component:', error);
+                toast({
+                  title: "Warning",
+                  description: `Failed to assign some salary components: ${error.message}`,
+                  variant: "destructive",
+                });
+              }
+            } catch (error) {
+              console.error('Error assigning salary component:', error);
+            }
+          }
+        }
       }
 
       onSuccess();
@@ -512,6 +559,86 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
           />
         </div>
 
+        {!employee && (
+          <div className="space-y-4 border-t pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Salary Components</h3>
+                <p className="text-sm text-muted-foreground">
+                  Define salary structure for the new employee
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSalaryComponents([...salaryComponents, { componentId: '', amount: '' }])}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Component
+              </Button>
+            </div>
+
+            {salaryComponents.length > 0 && (
+              <div className="space-y-3">
+                {salaryComponents.map((component, index) => (
+                  <div key={index} className="flex gap-4 items-start">
+                    <div className="flex-1">
+                      <label className="text-sm font-medium mb-1 block">Component</label>
+                      <select
+                        className="w-full p-2 border rounded-md"
+                        value={component.componentId}
+                        onChange={(e) => {
+                          const updated = [...salaryComponents];
+                          updated[index].componentId = e.target.value;
+                          setSalaryComponents(updated);
+                        }}
+                      >
+                        <option value="">Select component</option>
+                        {availableComponents?.map((comp) => (
+                          <option key={comp.id} value={comp.id}>
+                            {comp.name} ({comp.type})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-sm font-medium mb-1 block">Amount</label>
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        value={component.amount}
+                        onChange={(e) => {
+                          const updated = [...salaryComponents];
+                          updated[index].amount = e.target.value;
+                          setSalaryComponents(updated);
+                        }}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="mt-6"
+                      onClick={() => {
+                        const updated = salaryComponents.filter((_, i) => i !== index);
+                        setSalaryComponents(updated);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {salaryComponents.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">
+                No salary components added. Click "Add Component" to define the employee's salary structure.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex justify-end gap-4">
           <Button
