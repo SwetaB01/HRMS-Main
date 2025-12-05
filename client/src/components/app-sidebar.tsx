@@ -157,19 +157,11 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                 </SidebarMenuItem>
               )}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="/compensation">
-                    <DollarSign />
+                <SidebarMenuButton asChild isActive={location === "/compensation"}>
+                  <Link href="/compensation">
+                    <DollarSign className="h-4 w-4" />
                     <span>Compensation</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="/payroll">
-                    <DollarSign />
-                    <span>Payroll</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
