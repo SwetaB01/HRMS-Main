@@ -156,6 +156,22 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href="/compensation">
+                    <DollarSign />
+                    <span>Compensation</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href="/payroll">
+                    <DollarSign />
+                    <span>Payroll</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

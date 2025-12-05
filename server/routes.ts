@@ -2272,6 +2272,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Salary Components Routes
+  app.get("/api/salary-components", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
+    try {
+      const components = await storage.getAllSalaryComponents();
+      res.json(components);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch salary components" });
+    }
+  });
+
+  app.post("/api/salary-components", allowRoles('HR', 'Admin'), async (req, res) => {
+    try {
+      const component = await storage.createSalaryComponent(req.body);
+      res.status(201).json(component);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create salary component" });
+    }
+  });
+
+  app.patch("/api/salary-components/:id", allowRoles('HR', 'Admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const component = await storage.updateSalaryComponent(id, req.body);
+      if (!component) {
+        return res.status(404).json({ message: "Salary component not found" });
+      }
+      res.json(component);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update salary component" });
+    }
+  });
+
+  app.delete("/api/salary-components/:id", allowRoles('HR', 'Admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteSalaryComponent(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete salary component" });
+    }
+  });
+
+  // Employee Compensation Routes
+  app.get("/api/employees/:userId/compensation", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const compensation = await storage.getEmployeeCompensation(userId);
+      res.json(compensation);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch employee compensation" });
+    }
+  });
+
+  app.post("/api/employees/:userId/compensation", allowRoles('HR', 'Admin'), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const compensation = await storage.createEmployeeCompensation({
+        ...req.body,
+        userId
+      });
+      res.status(201).json(compensation);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create compensation" });
+    }
+  });
+
+  app.patch("/api/compensation/:id", allowRoles('HR', 'Admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const compensation = await storage.updateEmployeeCompensation(id, req.body);
+      if (!compensation) {
+        return res.status(404).json({ message: "Compensation not found" });
+      }
+      res.json(compensation);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update compensation" });
+    }
+  });
+
+  app.delete("/api/compensation/:id", allowRoles('HR', 'Admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteEmployeeCompensation(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete compensation" });
+    }
+  });
+
   // Company Routes - All authenticated users can view
   app.get("/api/company", requireAuth, async (req, res) => {
     try {

@@ -246,6 +246,38 @@ export const insertReimbursementSchema = createInsertSchema(reimbursements).omit
 export type InsertReimbursement = z.infer<typeof insertReimbursementSchema>;
 export type Reimbursement = typeof reimbursements.$inferSelect;
 
+// Salary Component Table
+export const salaryComponents = pgTable("salary_components", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  type: text("type").notNull(), // "Earning" or "Deduction"
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+});
+
+export const insertSalaryComponentSchema = createInsertSchema(salaryComponents).omit({ id: true });
+export type InsertSalaryComponent = z.infer<typeof insertSalaryComponentSchema>;
+export type SalaryComponent = typeof salaryComponents.$inferSelect;
+
+// Employee Compensation Table
+export const employeeCompensation = pgTable("employee_compensation", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => userProfiles.id),
+  componentId: varchar("component_id").notNull().references(() => salaryComponents.id),
+  amount: numeric("amount").notNull(),
+  effectiveFrom: date("effective_from").notNull(),
+  effectiveTo: date("effective_to"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertEmployeeCompensationSchema = createInsertSchema(employeeCompensation).omit({ 
+  id: true, 
+  createdAt: true 
+});
+export type InsertEmployeeCompensation = z.infer<typeof insertEmployeeCompensationSchema>;
+export type EmployeeCompensation = typeof employeeCompensation.$inferSelect;
+
 // Payroll Table
 export const payrolls = pgTable("payrolls", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

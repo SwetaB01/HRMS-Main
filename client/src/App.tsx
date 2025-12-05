@@ -24,6 +24,7 @@ const Reimbursements = lazy(() => import("./pages/reimbursements"));
 const PayrollPage = lazy(() => import("@/pages/payroll"));
 const CompanySettings = lazy(() => import("@/pages/company"));
 const Reports = lazy(() => import("@/pages/reports"));
+const CompensationPage = lazy(() => import("@/pages/compensation")); // Added CompensationPage import
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 // Loading spinner component
@@ -51,6 +52,7 @@ function Router({ currentUser, onLogout }: { currentUser: any; onLogout: () => v
         <Route path="/payroll" component={PayrollPage} />
         <Route path="/company" component={CompanySettings} />
         <Route path="/reports" component={Reports} />
+        <Route path="/compensation" component={CompensationPage} /> {/* Added Compensation route */}
         <Route component={NotFound} />
       </Switch>
     </Suspense>

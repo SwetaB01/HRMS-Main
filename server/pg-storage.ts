@@ -665,6 +665,50 @@ export class PostgresStorage implements IStorage {
     return updated;
   }
 
+  // Salary Components
+  async getAllSalaryComponents(): Promise<SalaryComponent[]> {
+    return await db.select().from(salaryComponents);
+  }
+
+  async createSalaryComponent(component: InsertSalaryComponent): Promise<SalaryComponent> {
+    const [created] = await db.insert(salaryComponents).values(component).returning();
+    return created;
+  }
+
+  async updateSalaryComponent(id: string, component: Partial<InsertSalaryComponent>): Promise<SalaryComponent | undefined> {
+    const [updated] = await db.update(salaryComponents)
+      .set(component)
+      .where(eq(salaryComponents.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSalaryComponent(id: string): Promise<void> {
+    await db.delete(salaryComponents).where(eq(salaryComponents.id, id));
+  }
+
+  // Employee Compensation
+  async getEmployeeCompensation(userId: string): Promise<EmployeeCompensation[]> {
+    return await db.select().from(employeeCompensation).where(eq(employeeCompensation.userId, userId));
+  }
+
+  async createEmployeeCompensation(compensation: InsertEmployeeCompensation): Promise<EmployeeCompensation> {
+    const [created] = await db.insert(employeeCompensation).values(compensation).returning();
+    return created;
+  }
+
+  async updateEmployeeCompensation(id: string, compensation: Partial<InsertEmployeeCompensation>): Promise<EmployeeCompensation | undefined> {
+    const [updated] = await db.update(employeeCompensation)
+      .set(compensation)
+      .where(eq(employeeCompensation.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteEmployeeCompensation(id: string): Promise<void> {
+    await db.delete(employeeCompensation).where(eq(employeeCompensation.id, id));
+  }
+
   async getDashboardStats(): Promise<{
     totalEmployees: number;
     presentToday: number;
