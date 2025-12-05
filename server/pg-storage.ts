@@ -17,6 +17,8 @@ import {
   reimbursementTypes,
   reimbursements,
   payrolls,
+  salaryComponents,
+  employeeCompensation,
   type UserProfile,
   type InsertUserProfile,
   type UserType,
@@ -43,6 +45,10 @@ import {
   type InsertReimbursement,
   type Payroll,
   type InsertPayroll,
+  type SalaryComponent,
+  type InsertSalaryComponent,
+  type EmployeeCompensation,
+  type InsertEmployeeCompensation,
 } from '@shared/schema';
 import type { IStorage } from './storage';
 
@@ -305,7 +311,7 @@ export class PostgresStorage implements IStorage {
       const currentUsed = parseFloat(existing[0].usedLeaves || '0');
       const currentTotal = parseFloat(existing[0].totalLeaves || '0');
       const newUsed = Math.max(0, currentUsed + days); // Ensure it doesn't go negative
-      
+
       // Ensure used leaves don't exceed total leaves (optional validation)
       if (newUsed > currentTotal && days > 0) {
         console.warn('Warning: Used leaves exceed total leaves', {
@@ -318,7 +324,7 @@ export class PostgresStorage implements IStorage {
           newUsed
         });
       }
-      
+
       console.log('Updating leave ledger:', {
         userId,
         leaveTypeId,
@@ -329,7 +335,7 @@ export class PostgresStorage implements IStorage {
         newUsed,
         remainingLeaves: currentTotal - newUsed
       });
-      
+
       await db.update(leaveLedgers)
         .set({ usedLeaves: newUsed.toString() })
         .where(eq(leaveLedgers.id, existing[0].id));
@@ -341,7 +347,7 @@ export class PostgresStorage implements IStorage {
         year,
         usedLeaves: Math.max(0, days)
       });
-      
+
       await db.insert(leaveLedgers).values({
         userId,
         leaveTypeId,
@@ -380,11 +386,13 @@ export class PostgresStorage implements IStorage {
     return updated;
   }
 
+  // Duplicate method, should be removed or renamed
   async createLeaveLedger(ledger: InsertLeaveLedger): Promise<LeaveLedger> {
     const [newLedger] = await db.insert(leaveLedgers).values(ledger).returning();
     return newLedger;
   }
 
+  // Duplicate method, should be removed or renamed
   async updateLeaveLedger(id: string, ledger: Partial<InsertLeaveLedger>): Promise<LeaveLedger | undefined> {
     const [updated] = await db.update(leaveLedgers)
       .set(ledger)
@@ -667,12 +675,12 @@ export class PostgresStorage implements IStorage {
 
   // Salary Components
   async getAllSalaryComponents(): Promise<SalaryComponent[]> {
-    return await db.select().from(salaryComponents);
+    return db.select().from(salaryComponents);
   }
 
-  async createSalaryComponent(component: InsertSalaryComponent): Promise<SalaryComponent> {
-    const [created] = await db.insert(salaryComponents).values(component).returning();
-    return created;
+  async createSalaryComponent(data: InsertSalaryComponent): Promise<SalaryComponent> {
+    const [component] = await db.insert(salaryComponents).values(data).returning();
+    return component;
   }
 
   async updateSalaryComponent(id: string, component: Partial<InsertSalaryComponent>): Promise<SalaryComponent | undefined> {
@@ -832,7 +840,7 @@ export class PostgresStorage implements IStorage {
   async getHierarchyTree(): Promise<any[]> {
     // Get all employees
     const allEmployees = await db.select().from(userProfiles);
-    
+
     // Get all roles for mapping
     const allRoles = await db.select().from(userRoles);
     const roleMap = new Map(allRoles.map(role => [role.id, role]));
