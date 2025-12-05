@@ -1,5 +1,5 @@
 import { db } from './db';
-import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, departments, reimbursements } from '@shared/schema';
+import { userRoles, userProfiles, leaveTypes, reimbursementTypes, userTypes, departments } from '@shared/schema';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { storage } from './storage';
