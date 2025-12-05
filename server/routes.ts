@@ -2095,7 +2095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { comments } = req.body;
-      const managerId = 'admin-user'; // In production, get from session
+      const managerId = req.session.userId!;
 
       const reimbursement = await storage.approveReimbursementByManager(id, managerId, comments);
       if (!reimbursement) {
@@ -2114,7 +2114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `${employee.firstName} ${employee.lastName}`,
             reimbTypeName,
             reimbursement.amount,
-            'Manager Approved',
+            'Approved by Manager',
             comments
           );
         }
@@ -2152,7 +2152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `${employee.firstName} ${employee.lastName}`,
             reimbTypeName,
             reimbursement.amount,
-            'Approved',
+            'Approved by Accountant',
             comments
           );
         }
@@ -2182,7 +2182,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Reimbursement not found" });
       }
 
-      // In production, send email notification here
+      // Send email notification to employee
+      try {
+        const employee = await storage.getUserProfile(reimbursement.userId);
+        const reimbTypes = await storage.getAllReimbursementTypes();
+        const reimbTypeName = reimbTypes.find(rt => rt.id === reimbursement.reimbursementTypeId)?.name || 'Expense';
+
+        if (employee && employee.email) {
+          await emailService.sendReimbursementApprovalNotification(
+            employee.email,
+            `${employee.firstName} ${employee.lastName}`,
+            reimbTypeName,
+            reimbursement.amount,
+            reimbursement.status, // Will be "Rejected by Manager" or "Rejected by Accountant"
+            comments
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send reimbursement rejection email:', emailError);
+        // Continue even if email fails
+      }
 
       res.json(reimbursement);
     } catch (error) {

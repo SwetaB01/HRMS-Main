@@ -581,7 +581,7 @@ export class PostgresStorage implements IStorage {
   async approveReimbursementByManager(id: string, managerId: string, comments?: string): Promise<Reimbursement | undefined> {
     const [updated] = await db.update(reimbursements)
       .set({
-        status: 'Manager Approved',
+        status: 'Approved by Manager',
         managerApprovalDate: new Date(),
         managerComments: comments || null,
       })
@@ -593,7 +593,7 @@ export class PostgresStorage implements IStorage {
   async approveReimbursementByAccountant(id: string, accountantId: string, comments?: string): Promise<Reimbursement | undefined> {
     const [updated] = await db.update(reimbursements)
       .set({
-        status: 'Approved',
+        status: 'Approved by Accountant',
         accountantId,
         accountantApprovalDate: new Date(),
         accountantComments: comments || null,
@@ -607,11 +607,15 @@ export class PostgresStorage implements IStorage {
     const reimb = await this.getReimbursement(id);
     if (!reimb) return undefined;
 
-    const updates: any = { status: 'Rejected' };
+    const updates: any = {};
     if (!reimb.managerApprovalDate) {
+      // Manager is rejecting
+      updates.status = 'Rejected by Manager';
       updates.managerApprovalDate = new Date();
       updates.managerComments = comments;
     } else {
+      // Accountant is rejecting
+      updates.status = 'Rejected by Accountant';
       updates.accountantApprovalDate = new Date();
       updates.accountantComments = comments;
     }

@@ -57,9 +57,10 @@ export default function Reimbursements() {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       "Pending": "secondary",
-      "Manager Approved": "default",
-      "Approved": "default",
-      "Rejected": "destructive",
+      "Approved by Manager": "default",
+      "Approved by Accountant": "default",
+      "Rejected by Manager": "destructive",
+      "Rejected by Accountant": "destructive",
     };
     return <Badge variant={variants[status] || "secondary"}>{status}</Badge>;
   };

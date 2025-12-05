@@ -236,12 +236,12 @@ export default function Approvals() {
     }
   };
 
-  const handleApproveReimbursement = async (isManager: boolean) => {
+  const handleApproveReimbursement = async (isManagerApproval: boolean) => {
     if (!selectedReimbursement) return;
 
     setIsSubmitting(true);
     try {
-      const endpoint = isManager 
+      const endpoint = isManagerApproval
         ? `/api/reimbursements/${selectedReimbursement.id}/approve-manager`
         : `/api/reimbursements/${selectedReimbursement.id}/approve-accountant`;
 
@@ -275,7 +275,18 @@ export default function Approvals() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/reimbursements/${selectedReimbursement.id}/reject`, {
+      // Determine the correct rejection endpoint based on the current status or user role
+      let endpoint;
+      if (currentUser?.accessLevel === 'Manager') {
+        endpoint = `/api/reimbursements/${selectedReimbursement.id}/reject-manager`;
+      } else if (currentUser?.accessLevel === 'Accountant') {
+        endpoint = `/api/reimbursements/${selectedReimbursement.id}/reject-accountant`;
+      } else {
+        // Fallback or error if role is not defined for rejection
+        throw new Error("Unauthorized to reject reimbursement.");
+      }
+
+      const response = await fetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -303,6 +314,17 @@ export default function Approvals() {
   const getReimbursementTypeName = (typeId: string) => {
     const type = reimbursementTypes?.find(t => t.id === typeId);
     return type?.name || typeId;
+  };
+
+  const getReimbursementStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive"> = {
+      "Pending": "secondary",
+      "Approved by Manager": "default",
+      "Approved by Accountant": "default",
+      "Rejected by Manager": "destructive",
+      "Rejected by Accountant": "destructive",
+    };
+    return <Badge variant={variants[status] || "secondary"}>{status}</Badge>;
   };
 
   const getStatusBadge = (status: string) => {
@@ -558,8 +580,8 @@ export default function Approvals() {
                           <TableCell>{getReimbursementTypeName(reimb.reimbursementTypeId)}</TableCell>
                           <TableCell>{reimb.date}</TableCell>
                           <TableCell>₹{reimb.amount}</TableCell>
-                          <TableCell className="max-w-xs truncate">{reimb.category}</TableCell>
-                          <TableCell>{getStatusBadge(reimb.status)}</TableCell>
+                          <TableCell className="max-w-xs truncate">{reimb.description}</TableCell>
+                          <TableCell>{getReimbursementStatusBadge(reimb.status)}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
                               <Button
@@ -780,8 +802,8 @@ export default function Approvals() {
               >
                 Cancel
               </Button>
-              <Button 
-                onClick={() => handleApproveReimbursement(selectedReimbursement?.status === 'Pending')} 
+              <Button
+                onClick={() => handleApproveReimbursement(currentUser?.accessLevel === 'Manager')}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? "Approving..." : "Approve"}
