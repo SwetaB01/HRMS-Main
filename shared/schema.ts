@@ -290,7 +290,17 @@ export const payrolls = pgTable("payrolls", {
   reimbursements: numeric("reimbursements").default("0"),
   lopDays: numeric("lop_days").default("0"),
   lopAmount: numeric("lop_amount").default("0"),
+  grossSalary: numeric("gross_salary").notNull(),
+  pfDeduction: numeric("pf_deduction").default("0"),
+  incomeTax: numeric("income_tax").default("0"),
+  totalDeductions: numeric("total_deductions").default("0"),
   netSalary: numeric("net_salary").notNull(),
+  workingDays: integer("working_days").default(0),
+  presentDays: numeric("present_days").default("0"),
+  leaveDays: numeric("leave_days").default("0"),
+  absentDays: numeric("absent_days").default("0"),
+  weeklyOffs: integer("weekly_offs").default(0),
+  holidays: integer("holidays").default(0),
   status: text("status").notNull().default("Draft"),
   generatedAt: timestamp("generated_at").defaultNow(),
   approvedBy: varchar("approved_by").references(() => userProfiles.id),
@@ -304,3 +314,10 @@ export const insertPayrollSchema = createInsertSchema(payrolls).omit({
 });
 export type InsertPayroll = z.infer<typeof insertPayrollSchema>;
 export type Payroll = typeof payrolls.$inferSelect;
+
+// Payroll calculation helper types
+export interface PayrollCalculationInput {
+  userId: string;
+  month: number;
+  year: number;
+}

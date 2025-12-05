@@ -52,11 +52,11 @@ export default function PayrollPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Month/Year</TableHead>
-                  <TableHead>Basic Salary</TableHead>
-                  <TableHead>Allowances</TableHead>
-                  <TableHead>Deductions</TableHead>
+                  <TableHead>Gross Salary</TableHead>
+                  <TableHead>PF Deduction</TableHead>
+                  <TableHead>Income Tax</TableHead>
+                  <TableHead>LOP</TableHead>
                   <TableHead>Reimbursements</TableHead>
-                  <TableHead>LOP Amount</TableHead>
                   <TableHead>Net Salary</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -87,12 +87,16 @@ export default function PayrollPage() {
                       <TableCell className="font-medium">
                         {months[payroll.month - 1]} {payroll.year}
                       </TableCell>
-                      <TableCell>₹{payroll.basicSalary}</TableCell>
-                      <TableCell>₹{payroll.allowances}</TableCell>
-                      <TableCell>₹{payroll.deductions}</TableCell>
-                      <TableCell>₹{payroll.reimbursements}</TableCell>
-                      <TableCell>₹{payroll.lopAmount}</TableCell>
-                      <TableCell className="font-semibold">₹{payroll.netSalary}</TableCell>
+                      <TableCell>₹{parseFloat(payroll.grossSalary || '0').toFixed(2)}</TableCell>
+                      <TableCell>₹{parseFloat(payroll.pfDeduction || '0').toFixed(2)}</TableCell>
+                      <TableCell>₹{parseFloat(payroll.incomeTax || '0').toFixed(2)}</TableCell>
+                      <TableCell>
+                        {parseFloat(payroll.lopDays || '0')} days
+                        <br />
+                        <span className="text-sm text-muted-foreground">₹{parseFloat(payroll.lopAmount || '0').toFixed(2)}</span>
+                      </TableCell>
+                      <TableCell>₹{parseFloat(payroll.reimbursements || '0').toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold">₹{parseFloat(payroll.netSalary || '0').toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(payroll.status)}</TableCell>
                       <TableCell className="text-right">
                         <Button

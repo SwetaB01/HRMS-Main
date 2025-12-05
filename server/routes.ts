@@ -2246,6 +2246,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/payroll/generate", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
+    try {
+      const { userId, month, year } = req.body;
+
+      if (!userId || !month || !year) {
+        return res.status(400).json({ message: "userId, month, and year are required" });
+      }
+
+      const { PayrollCalculator } = await import('./payroll-calculator');
+      const payroll = await PayrollCalculator.generatePayroll(userId, month, year);
+
+      res.status(201).json(payroll);
+    } catch (error: any) {
+      console.error('Payroll generation error:', error);
+      res.status(400).json({ message: error.message || "Failed to generate payroll" });
+    }
+  });
+
+  app.post("/api/payroll/generate-bulk", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
+    try {
+      const { month, year } = req.body;
+
+      if (!month || !year) {
+        return res.status(400).json({ message: "month and year are required" });
+      }
+
+      // Get all active employees
+      const employees = await storage.getAllUserProfiles();
+      const activeEmployees = employees.filter(emp => emp.status === 'Active');
+
+      const { PayrollCalculator } = await import('./payroll-calculator');
+      const results = [];
+      const errors = [];
+
+      for (const employee of activeEmployees) {
+        try {
+          const payroll = await PayrollCalculator.generatePayroll(employee.id, month, year);
+          results.push(payroll);
+        } catch (error: any) {
+          errors.push({
+            employeeId: employee.id,
+            employeeName: `${employee.firstName} ${employee.lastName}`,
+            error: error.message
+          });
+        }
+      }
+
+      res.json({
+        message: `Generated ${results.length} payrolls successfully`,
+        successCount: results.length,
+        errorCount: errors.length,
+        results,
+        errors
+      });
+    } catch (error: any) {
+      console.error('Bulk payroll generation error:', error);
+      res.status(500).json({ message: error.message || "Failed to generate bulk payroll" });
+    }
+  });
+
   app.post("/api/payroll", allowRoles('HR', 'Accountant', 'Admin'), async (req, res) => {
     try {
       const validated = insertPayrollSchema.parse(req.body);
