@@ -1,7 +1,5 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -11,14 +9,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,80 +28,118 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-
-interface SalaryComponent {
-  id: string;
-  name: string;
-  type: string;
-  description: string | null;
-  isActive: boolean;
-}
+import type { SalaryComponent, EmployeeCompensation } from "@shared/schema";
 
 export default function CompensationPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isComponentDialogOpen, setIsComponentDialogOpen] = useState(false);
   const [editingComponent, setEditingComponent] = useState<SalaryComponent | null>(null);
-  const [formData, setFormData] = useState({
+  const [componentForm, setComponentForm] = useState({
     name: "",
-    type: "Earning",
+    type: "Earning" as "Earning" | "Deduction",
     description: "",
     isActive: true,
   });
 
-  const { data: components, isLoading } = useQuery<SalaryComponent[]>({
+  const { data: components, isLoading: isLoadingComponents } = useQuery<SalaryComponent[]>({
     queryKey: ["/api/salary-components"],
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
+  const createComponentMutation = useMutation({
+    mutationFn: async (data: typeof componentForm) => {
       const response = await fetch("/api/salary-components", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to create component");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create salary component");
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/salary-components"] });
-      setIsDialogOpen(false);
-      resetForm();
+      setIsComponentDialogOpen(false);
+      setComponentForm({
+        name: "",
+        type: "Earning",
+        description: "",
+        isActive: true,
+      });
       toast({
         title: "Success",
         description: "Salary component created successfully",
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create salary component",
+        variant: "destructive",
+      });
+    },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<typeof formData> }) => {
+  const updateComponentMutation = useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<typeof componentForm>;
+    }) => {
       const response = await fetch(`/api/salary-components/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to update component");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update salary component");
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/salary-components"] });
-      setIsDialogOpen(false);
-      resetForm();
+      setIsComponentDialogOpen(false);
+      setComponentForm({
+        name: "",
+        type: "Earning",
+        description: "",
+        isActive: true,
+      });
       toast({
         title: "Success",
         description: "Salary component updated successfully",
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update salary component",
+        variant: "destructive",
+      });
+    },
   });
 
-  const deleteMutation = useMutation({
+  const deleteComponentMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/salary-components/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
-      if (!response.ok) throw new Error("Failed to delete component");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete salary component");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/salary-components"] });
@@ -110,36 +148,34 @@ export default function CompensationPage() {
         description: "Salary component deleted successfully",
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete salary component",
+        variant: "destructive",
+      });
+    },
   });
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      type: "Earning",
-      description: "",
-      isActive: true,
-    });
-    setEditingComponent(null);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingComponent) {
-      updateMutation.mutate({ id: editingComponent.id, data: formData });
+  const handleComponentDialogOpen = (component?: SalaryComponent) => {
+    if (component) {
+      setEditingComponent(component);
+      setComponentForm({
+        name: component.name,
+        type: component.type as "Earning" | "Deduction",
+        description: component.description || "",
+        isActive: component.isActive ?? true,
+      });
     } else {
-      createMutation.mutate(formData);
+      setEditingComponent(null);
+      setComponentForm({
+        name: "",
+        type: "Earning",
+        description: "",
+        isActive: true,
+      });
     }
-  };
-
-  const handleEdit = (component: SalaryComponent) => {
-    setEditingComponent(component);
-    setFormData({
-      name: component.name,
-      type: component.type,
-      description: component.description || "",
-      isActive: component.isActive,
-    });
-    setIsDialogOpen(true);
+    setIsComponentDialogOpen(true);
   };
 
   return (
@@ -151,10 +187,7 @@ export default function CompensationPage() {
             Manage salary components for employee compensation
           </p>
         </div>
-        <Button onClick={() => {
-          resetForm();
-          setIsDialogOpen(true);
-        }}>
+        <Button onClick={() => handleComponentDialogOpen()}>
           <Plus className="h-4 w-4 mr-2" />
           Add Component
         </Button>
@@ -176,10 +209,10 @@ export default function CompensationPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {isLoadingComponents ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center">
-                    Loading...
+                    <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
               ) : components && components.length > 0 ? (
@@ -193,7 +226,7 @@ export default function CompensationPage() {
                     </TableCell>
                     <TableCell>{component.description || "-"}</TableCell>
                     <TableCell>
-                      <Badge variant={component.isActive ? "default" : "secondary"}>
+                      <Badge variant={component.isActive ? "default" : "outline"}>
                         {component.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
@@ -201,16 +234,16 @@ export default function CompensationPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleEdit(component)}
+                        onClick={() => handleComponentDialogOpen(component)}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {
                           if (confirm("Are you sure you want to delete this component?")) {
-                            deleteMutation.mutate(component.id);
+                            deleteComponentMutation.mutate(component.id);
                           }
                         }}
                       >
@@ -222,7 +255,7 @@ export default function CompensationPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    No salary components found
+                    No salary components found. Click the button above to add one.
                   </TableCell>
                 </TableRow>
               )}
@@ -231,32 +264,42 @@ export default function CompensationPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isComponentDialogOpen} onOpenChange={setIsComponentDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {editingComponent ? "Edit Salary Component" : "Add Salary Component"}
             </DialogTitle>
+            <DialogDescription>
+              {editingComponent
+                ? "Update the details of an existing salary component."
+                : "Enter the details for a new salary component."}
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
               <Label htmlFor="name">Component Name *</Label>
               <Input
                 id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                value={componentForm.name}
+                onChange={(e) =>
+                  setComponentForm({ ...componentForm, name: e.target.value })
+                }
+                placeholder="e.g., Basic Salary, HRA, Professional Tax"
                 required
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="type">Type *</Label>
               <Select
-                value={formData.type}
-                onValueChange={(value) => setFormData({ ...formData, type: value })}
+                value={componentForm.type}
+                onValueChange={(value) =>
+                  setComponentForm({ ...componentForm, type: value as "Earning" | "Deduction" })
+                }
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select component type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Earning">Earning</SelectItem>
@@ -265,41 +308,52 @@ export default function CompensationPage() {
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="description">Description</Label>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (Optional)</Label>
               <Input
                 id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                value={componentForm.description}
+                onChange={(e) =>
+                  setComponentForm({ ...componentForm, description: e.target.value })
+                }
+                placeholder="Enter component description"
               />
             </div>
 
             <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
+              <Switch
                 id="isActive"
-                checked={formData.isActive}
-                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                checked={componentForm.isActive}
+                onCheckedChange={(checked) =>
+                  setComponentForm({ ...componentForm, isActive: checked })
+                }
               />
               <Label htmlFor="isActive">Active</Label>
             </div>
-
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsDialogOpen(false);
-                  resetForm();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingComponent ? "Update" : "Create"}
-              </Button>
-            </div>
-          </form>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsComponentDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (editingComponent) {
+                  updateComponentMutation.mutate({
+                    id: editingComponent.id,
+                    data: componentForm,
+                  });
+                } else {
+                  createComponentMutation.mutate(componentForm);
+                }
+              }}
+              disabled={!componentForm.name.trim() || createComponentMutation.isPending || updateComponentMutation.isPending}
+            >
+              {editingComponent ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
