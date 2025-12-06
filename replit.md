@@ -63,7 +63,13 @@ Preferred communication style: Simple, everyday language.
 **Database**: PostgreSQL (Neon Database).
 
 **Core Tables:**
-`user_types`, `user_roles`, `user_profiles`, `departments`, `companies`, `cost_centers`, `leave_types`, `leaves`, `leave_ledger`, `holidays`, `holiday_details`, `attendance`, `reimbursement_types`, `reimbursements`, `payroll`.
+`user_types`, `user_roles`, `user_profiles`, `departments`, `companies`, `cost_centers`, `leave_types`, `leaves`, `leave_ledger`, `holidays`, `holiday_details`, `attendance`, `reimbursement_types`, `reimbursements`, `payroll`, `employee_bank_details`.
+
+**Recent Updates (December 2025):**
+- **Bank Details Management**: Complete CRUD operations for employee bank details with admin and self-service API endpoints. Bank details displayed on employee profile page and in employee form for admins.
+- **Leave Day Calculation**: UTC-based inclusive date calculation (+1 day for inclusive range) across all leave routes.
+- **Enhanced Salary Slip**: Displays employee details including date of joining, department, grade, and pay group.
+- **Payroll Blocking**: Validates that employees have both CTC/salary components and bank details before payroll generation. Bulk generation reports skipped employees with detailed reasons.
 
 **Schema Management:**
 - Drizzle ORM for schema definition (`shared/schema.ts`) and migrations.
