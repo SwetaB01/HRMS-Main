@@ -146,9 +146,20 @@ export class PayrollCalculator {
       }
     }
 
-    // If no basic salary found, use a default or throw error
+    // If no basic salary found, check if ANY compensation exists
+    if (basicSalary === 0 && compensationRecords.length === 0) {
+      throw new Error('No compensation components found for employee. Please add salary components first.');
+    }
+    
+    // If there are components but no basic salary, use the first earning as basic
+    if (basicSalary === 0 && allowances > 0) {
+      basicSalary = allowances;
+      allowances = 0;
+    }
+    
+    // Still no salary? Set a minimal default to prevent errors
     if (basicSalary === 0) {
-      throw new Error('No basic salary component found for employee');
+      throw new Error('No salary components found for employee. Please configure employee compensation.');
     }
 
     return { basicSalary, allowances, deductions };
@@ -233,11 +244,12 @@ export class PayrollCalculator {
       holidayCount += days;
     }
 
-    // Calculate weekly offs (Sundays)
+    // Calculate weekly offs (Saturdays and Sundays)
     let weeklyOffCount = 0;
     const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
-      if (currentDate.getDay() === 0) { // Sunday
+      const dayOfWeek = currentDate.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday (0) or Saturday (6)
         weeklyOffCount++;
       }
       currentDate.setDate(currentDate.getDate() + 1);

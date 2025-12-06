@@ -2219,12 +2219,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Payroll Routes - Only Super Admin can access
-  app.get("/api/payroll", requireAdmin, async (req, res) => {
+  // Payroll Routes - Employees see their own, Admin sees all
+  app.get("/api/payroll", requireAuth, async (req, res) => {
     try {
-      // Only Super Admin can view all payrolls
-      const payrolls = await storage.getAllPayrolls();
-      res.json(payrolls);
+      const userId = req.session.userId!;
+      const currentUser = await storage.getUserProfile(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let userRole = req.session.userRole;
+      if (!userRole && currentUser.roleId) {
+        const role = await storage.getUserRole(currentUser.roleId);
+        if (role) {
+          userRole = {
+            accessLevel: role.accessLevel,
+            roleName: role.roleName
+          };
+        }
+      }
+
+      // Super Admin can view all payrolls
+      if (userRole?.accessLevel === 'Admin') {
+        const payrolls = await storage.getAllPayrolls();
+        res.json(payrolls);
+      } else {
+        // Other employees see only their own payroll
+        const payrolls = await storage.getPayrollsByUser(userId);
+        res.json(payrolls);
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch payroll" });
     }

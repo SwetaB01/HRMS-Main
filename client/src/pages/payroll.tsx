@@ -30,7 +30,7 @@ export default function PayrollPage() {
 
   const { data: payrolls, isLoading } = useQuery<Payroll[]>({
     queryKey: ["/api/payroll"],
-    enabled: !isLoadingUser && currentUser?.accessLevel === 'Admin',
+    enabled: !isLoadingUser,
   });
 
   const getStatusBadge = (status: string) => {
@@ -47,32 +47,11 @@ export default function PayrollPage() {
     "July", "August", "September", "October", "November", "December"
   ];
 
-  // Check if user is Super Admin
-  const canAccessPayroll = !isLoadingUser && currentUser?.accessLevel === 'Admin';
-
   if (isLoadingUser) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  if (!canAccessPayroll) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-semibold mb-1">Payroll</h1>
-          <p className="text-muted-foreground">
-            View salary slips and payment history
-          </p>
-        </div>
-        <div className="border rounded-md p-8 text-center">
-          <p className="text-muted-foreground text-lg">
-            Access Denied. Only Super Admin users can view payroll information.
-          </p>
-        </div>
       </div>
     );
   }

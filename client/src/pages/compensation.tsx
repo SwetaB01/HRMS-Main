@@ -46,8 +46,22 @@ export default function CompensationPage() {
     isActive: true,
   });
 
+  const { data: currentUser, isLoading: isLoadingUser } = useQuery<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    username: string;
+    roleName: string;
+    accessLevel: string;
+    roleId: string | null;
+  }>({
+    queryKey: ["/api/auth/me"],
+  });
+
   const { data: components, isLoading: isLoadingComponents } = useQuery<SalaryComponent[]>({
     queryKey: ["/api/salary-components"],
+    enabled: !isLoadingUser && currentUser?.accessLevel === 'Admin',
   });
 
   const createComponentMutation = useMutation({
@@ -177,6 +191,33 @@ export default function CompensationPage() {
     }
     setIsComponentDialogOpen(true);
   };
+
+  if (isLoadingUser) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (currentUser?.accessLevel !== 'Admin') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-semibold mb-1">Salary Components</h1>
+          <p className="text-muted-foreground">
+            Manage salary components for employee compensation
+          </p>
+        </div>
+        <div className="border rounded-md p-8 text-center">
+          <p className="text-muted-foreground text-lg">
+            Access Denied. Only Super Admin users can access salary components and compensation.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
