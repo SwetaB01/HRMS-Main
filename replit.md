@@ -2,42 +2,16 @@
 
 ## Overview
 
-MIDCAI HRMS is a comprehensive web-based Human Resource Management System built for Midcai Consulting Private Limited. The system centralizes workforce management operations including employee management, attendance tracking, leave management, holiday calendars, reimbursements, payroll processing, and document management. The application serves multiple user roles (Administrators, HR professionals, Managers, and Employees) across various departments with role-based access controls.
+MIDCAI HRMS is a comprehensive web-based Human Resource Management System for Midcai Consulting Private Limited. It centralizes workforce management including employee, attendance, leave, holiday, reimbursement, payroll, and document management. The system supports multiple user roles (Administrators, HR professionals, Managers, Employees) with role-based access controls across various departments.
 
 **Company Details:**
 - Name: MIDCAI
 - Tagline: Unfolding Perpetually
-- Address: 906-907, Signature Elite, J 7, Govind Marg, Nr. Narayan Singh Circle, Jaipur, Rajasthan - 302004
-
-**Brand Colors:**
-- MIDCAI Beige: #F3EDED
-- MIDCAI Orange: #F23F00
-- MIDCAI Black: #100D08
-- White: #FFFFFF
+- Brand Colors: MIDCAI Beige (#F3EDED), MIDCAI Orange (#F23F00), MIDCAI Black (#100D08), White (#FFFFFF)
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
-
-## Email Notification System
-
-The HRMS system includes a comprehensive email notification system built with Nodemailer. Once SMTP credentials are configured, the system will automatically send emails for:
-
-- **Leave Applications**: Notifies managers when employees submit leave requests
-- **Leave Approvals/Rejections**: Notifies employees about leave application decisions
-- **Reimbursement Requests**: Notifies managers when employees submit expense claims
-- **Reimbursement Approvals**: Notifies employees about reimbursement approvals (manager and accountant levels)
-- **Payslip Notifications**: Notifies employees when payslips are available
-
-**Configuration Status**: Email service is implemented and ready to use. Requires the following environment variables:
-- `SMTP_HOST`: Email server address
-- `SMTP_PORT`: Port number (587 or 465)
-- `SMTP_USER`: Email username/address
-- `SMTP_PASSWORD`: Email password or app-specific password
-- `SMTP_FROM_EMAIL`: Sender email address
-- `SMTP_FROM_NAME`: Sender display name
-
-**Note**: User chose not to use the Resend integration and will provide custom SMTP credentials instead.
 
 ## System Architecture
 
@@ -48,34 +22,14 @@ The HRMS system includes a comprehensive email notification system built with No
 - **Build Tool**: Vite
 - **UI Components**: Shadcn/ui (New York style variant) built on Radix UI primitives
 - **Styling**: Tailwind CSS with custom design system
-- **State Management**: TanStack Query (React Query) for server state
+- **State Management**: TanStack Query (React Query)
 - **Form Handling**: React Hook Form with Zod validation
-- **Routing**: Wouter (lightweight client-side routing)
+- **Routing**: Wouter
 
 **Design System:**
-- Enterprise application pattern prioritizing clarity, consistency, and efficient information density
-- Typography: Inter font family (via Google Fonts)
-- Spacing system: Tailwind units limited to 2, 4, 6, 8, 12, 16 for consistency
-- Component padding standard: p-6
-- Form field spacing: space-y-4
-- Table cell padding: px-4 py-3
-
-**Component Structure:**
-- Reusable UI components in `client/src/components/ui/`
-- Feature-specific forms in `client/src/components/` (employee-form, leave-form, holiday-form, reimbursement-form)
-- Page components in `client/src/pages/` for each major module
-- App-level sidebar navigation component for consistent navigation
-
-**Key Pages:**
-- Dashboard: Overview statistics and quick actions
-- Employees: Employee management with CRUD operations
-- Attendance: Check-in/check-out and attendance records
-- Leaves: Leave applications and balance tracking
-- Holidays: Company holiday calendar management
-- Reimbursements: Expense claim submissions and approvals
-- Payroll: Salary slips and payment history
-- Company Settings: Company profile and configuration
-- Reports: Data export and reporting functionality
+- Enterprise application pattern prioritizing clarity, consistency, and efficient information density.
+- Typography: Inter font family.
+- Consistent spacing and component padding.
 
 ### Backend Architecture
 
@@ -84,246 +38,52 @@ The HRMS system includes a comprehensive email notification system built with No
 - **Framework**: Express.js
 - **Database ORM**: Drizzle ORM
 - **Authentication**: bcryptjs for password hashing
-- **Session Management**: Session-based authentication (credentials included)
+- **Session Management**: Session-based authentication
 
 **API Structure:**
-- RESTful API design with `/api` prefix
-- Route registration in `server/routes.ts`
-- Storage abstraction layer in `server/storage.ts` providing interface for all database operations
-- Centralized error handling and request/response logging middleware
+- RESTful API design with `/api` prefix.
+- Centralized error handling and logging.
+- Storage abstraction layer (`IStorage`) for database operations.
 
-**Key API Endpoints:**
-- Authentication: `/api/auth/login`
-- Employee Management: `/api/employees`
-- Attendance: `/api/attendance`, `/api/attendance/check-in`, `/api/attendance/check-out`
-- Leave Management: `/api/leaves`, `/api/leave-balance`
-- Holidays: `/api/holidays`
-- Reimbursements: `/api/reimbursements`
-- Payroll: `/api/payroll`
-- Company: `/api/company`
-- Dashboard: `/api/dashboard/stats`
-
-**Data Layer Design:**
-- Storage interface pattern (`IStorage`) for database abstraction
-- Separation of concerns between route handlers and data access
-- Type-safe database operations using Drizzle ORM and shared schema types
+**Key Features & Implementations:**
+- **Email Notification System**: Nodemailer for automated notifications (leave, reimbursement, payslips).
+- **Salary Management System**:
+    - All salary components stored as annual amounts; monthly amounts calculated dynamically.
+    - Employee compensation setup, personal compensation view (`/api/my-compensation`), and detailed profile display.
+- **Authentication & Authorization**:
+    - Username/password authentication with bcryptjs and session management.
+    - Role-Based Access Control (RBAC) with five roles: Super Admin, HR Admin, Manager, Accountant, Employee.
+    - Permission middleware for granular access control (`requireAuth`, `allowRoles`, etc.).
+- **Organizational Hierarchy System**:
+    - Hierarchical employee-manager relationships with validation (manager.level < employee.level).
+    - API endpoints for assigning managers, listing subordinates, and viewing the full hierarchy tree.
 
 ### Database Schema
 
-**Database**: PostgreSQL (configured via `DATABASE_URL` environment variable)
+**Database**: PostgreSQL (Neon Database).
 
 **Core Tables:**
-- `user_types`: User type classifications
-- `user_roles`: Role definitions with access levels and permissions
-- `user_profiles`: Employee/user information including authentication credentials
-- `departments`: Organizational departments
-- `companies`: Company/branch information
-- `cost_centers`: Cost center tracking
-- `leave_types`: Leave category definitions
-- `leaves`: Leave application records
-- `leave_ledger`: Leave balance tracking
-- `holidays`: Holiday calendar entries
-- `holiday_details`: Detailed holiday information
-- `attendance`: Daily attendance records
-- `reimbursement_types`: Expense category definitions
-- `reimbursements`: Expense claim records
-- `payroll`: Salary payment records
+`user_types`, `user_roles`, `user_profiles`, `departments`, `companies`, `cost_centers`, `leave_types`, `leaves`, `leave_ledger`, `holidays`, `holiday_details`, `attendance`, `reimbursement_types`, `reimbursements`, `payroll`.
 
 **Schema Management:**
-- Schema definitions in `shared/schema.ts` using Drizzle ORM
-- Zod schemas for runtime validation derived from Drizzle schemas
-- Type inference for TypeScript type safety
-- UUID primary keys using PostgreSQL's `gen_random_uuid()`
-- Timestamp fields for audit trails
-
-### Authentication & Authorization
-
-**Authentication Mechanism:**
-- Username/password-based authentication
-- Password hashing using bcryptjs
-- Session-based authentication with credentials stored client-side (localStorage)
-- Login state management in React App component
-- User role information included in session (`req.session.userRole`)
-
-**Authorization - Role-Based Access Control:**
-
-The system implements a comprehensive role-based permission system with five standardized roles:
-
-**Role Hierarchy:**
-1. **Super Admin** (accessLevel: 'Admin')
-   - Full system access with all permissions
-   - Can manage all data across the system
-   - Can create, update, delete roles
-   - Automatically has access to all routes
-
-2. **HR Admin** (accessLevel: 'HR')
-   - Employee lifecycle management (create, update employees)
-   - Payroll processing and management
-   - Leave management and approvals
-   - View all reimbursements
-   - Holiday management
-
-3. **Manager** (accessLevel: 'Manager')
-   - Approve/reject team leave requests
-   - Approve reimbursements (manager level)
-   - Delete team attendance records
-   - View all reimbursements
-   - View team dashboard statistics
-
-4. **Accountant** (accessLevel: 'Accountant')
-   - Payroll processing and approval
-   - Reimbursement approvals (accountant level)
-   - View all payrolls and reimbursements
-   - Financial data access
-
-5. **Employee** (accessLevel: 'Employee')
-   - View and edit own profile
-   - Mark own attendance
-   - Apply for leaves
-   - Submit reimbursement claims
-   - View own payroll records
-   - Access own data only
-
-**Permission Middleware:**
-- `requireAuth` - Ensures user is authenticated
-- `requireAdmin` - Admin-only access
-- `requireHROrAdmin` - HR and Admin access
-- `requireManagerOrHROrAdmin` - Manager, HR, and Admin access
-- `requireAccountantOrAdmin` - Accountant and Admin access
-- `allowRoles(...levels)` - Flexible middleware accepting multiple access levels
-
-**Permission Matrix:**
-```
-Route Type            | Admin | HR | Manager | Accountant | Employee
-----------------------|-------|-----|---------|------------|----------
-Role Management       |  ✓    |     |         |            |
-Employee CRUD         |  ✓    | ✓   |         |            |
-Dashboard Stats       |  ✓    | ✓   |    ✓    |     ✓      |    ✓
-Attendance (Delete)   |  ✓    | ✓   |    ✓    |            |  Own
-Leave Apply           |  ✓    | ✓   |    ✓    |            |    ✓
-Leave Approve/Reject  |  ✓    | ✓   |    ✓    |            |
-Holiday Management    |  ✓    | ✓   |         |            |  View
-Reimburse Submit      |  ✓    | ✓   |    ✓    |     ✓      |    ✓
-Reimburse View All    |  ✓    | ✓   |    ✓    |     ✓      |  Own
-Reimburse Approve     |  ✓    | ✓   |    ✓    |     ✓      |
-Payroll Create        |  ✓    | ✓   |         |     ✓      |
-Payroll View          |  ✓    | ✓   |         |     ✓      |  Own
-```
-
-**Business Logic Enhancements:**
-- Elevated roles (Manager, HR, Admin) can operate on team records, not just their own
-- Attendance management:
-  - Manual attendance creation: Managers/HR/Admins can create attendance for team members by providing `userId` in request body
-  - Attendance deletion: Managers/HR/Admins can delete team attendance records
-  - Check-in/check-out: Self-service only (employees mark their own attendance)
-- Reimbursement and payroll GET routes filter data based on role:
-  - Employees see only their own records
-  - Elevated roles see all records (future: filtered by team/department)
-- Admin role automatically inherits all permissions
-
-### Organizational Hierarchy System
-
-The HRMS implements a hierarchical employee-manager relationship system with validation rules to ensure proper organizational structure.
-
-**Hierarchy Levels:**
-
-Roles are assigned numeric hierarchy levels (lower numbers = higher authority):
-1. **Super Admin** (Level 1) - Highest authority
-2. **Manager** (Level 2) - Team leadership
-3. **HR Admin** (Level 3) - HR operations
-4. **Accountant** (Level 4) - Finance operations
-5. **Employee** (Level 5) - Individual contributors
-
-**Manager-Employee Relationships:**
-
-- Each employee can have one assigned manager (stored in `user_profiles.manager_id`)
-- Manager assignment enforces hierarchy validation: **manager.level < employee.level**
-- Example valid assignments:
-  - Manager (level 2) can manage HR Admin (level 3), Accountant (level 4), or Employee (level 5)
-  - HR Admin (level 3) can manage Accountant (level 4) or Employee (level 5)
-  - Employee (level 5) cannot manage anyone
-- Example invalid assignments:
-  - Employee (level 5) cannot manage Manager (level 2) - violates hierarchy
-  - HR Admin (level 3) cannot manage Manager (level 2) - violates hierarchy
-
-**Hierarchy API Endpoints:**
-
-1. **POST `/api/employees/:employeeId/assign-manager`**
-   - Assigns a manager to an employee
-   - Permissions: HR Admin, Super Admin only
-   - Request body: `{ "managerId": "uuid" }`
-   - Validates hierarchy: throws error if manager.level >= employee.level
-   - Returns: Updated employee profile
-
-2. **GET `/api/employees/:managerId/subordinates`**
-   - Lists all direct subordinates of a manager
-   - Permissions: 
-     - Managers can view their own subordinates only
-     - HR Admin and Super Admin can view any manager's subordinates
-   - Returns: Array of employee profiles (without passwords)
-
-3. **GET `/api/hierarchy/tree`**
-   - Returns complete organizational hierarchy as a tree structure
-   - Permissions: All authenticated users
-   - Returns: Nested tree with employees grouped under their managers
-   - Root nodes: Employees with no assigned manager
-
-**Validation Rules:**
-
-- Manager assignment requires both employee and manager to have roles assigned
-- Manager must have a lower hierarchy level (numerically) than the employee
-- Validation occurs at the storage layer before database update
-- Clear error messages indicate which hierarchy rule was violated
-
-**Use Cases:**
-
-- **Organizational Structure**: Build reporting chains and team structures
-- **Leave Approvals**: Employees submit leave requests to their assigned manager
-- **Reimbursement Approvals**: Manager approval required before accountant review
-- **Team Management**: Managers can view and manage their subordinates' data
-- **Reporting**: Generate org charts and hierarchy visualizations
+- Drizzle ORM for schema definition (`shared/schema.ts`) and migrations.
+- Zod schemas for runtime validation.
+- UUID primary keys and timestamp fields.
 
 ## External Dependencies
 
 ### Third-Party Services
-- **Neon Database**: PostgreSQL database hosting (via `@neondatabase/serverless` package)
-- **Google Fonts**: Inter font family for typography
-- **Replit Services**: Development environment, hosting, and build tools
+- **Neon Database**: PostgreSQL cloud hosting.
+- **Google Fonts**: Inter font family.
+- **Replit Services**: Development environment, hosting, and build tools.
 
 ### Key NPM Packages
 
 **Frontend:**
-- `@tanstack/react-query`: Server state management and caching
-- `@radix-ui/*`: Headless UI component primitives (accordion, dialog, dropdown, popover, select, tabs, toast, etc.)
-- `react-hook-form`: Form state management
-- `@hookform/resolvers`: Form validation integration
-- `zod`: Runtime type validation
-- `wouter`: Client-side routing
-- `date-fns`: Date manipulation and formatting
-- `class-variance-authority`: Component variant management
-- `clsx` & `tailwind-merge`: Conditional CSS class composition
-- `cmdk`: Command menu component
-- `lucide-react`: Icon library
+- `@tanstack/react-query`, `@radix-ui/*`, `react-hook-form`, `@hookform/resolvers`, `zod`, `wouter`, `date-fns`, `class-variance-authority`, `clsx`, `tailwind-merge`, `cmdk`, `lucide-react`.
 
 **Backend:**
-- `express`: Web server framework
-- `drizzle-orm`: Type-safe SQL ORM
-- `drizzle-kit`: Database migrations and schema management
-- `bcryptjs`: Password hashing
-- `connect-pg-simple`: PostgreSQL session store
+- `express`, `drizzle-orm`, `drizzle-kit`, `bcryptjs`, `connect-pg-simple`, `nodemailer`.
 
 **Build Tools:**
-- `vite`: Frontend build tool and dev server
-- `esbuild`: Backend bundling for production
-- `tsx`: TypeScript execution for development
-- `@vitejs/plugin-react`: React support in Vite
-- `@replit/*` plugins: Replit-specific development enhancements
-
-### Development Environment
-- **Platform**: Replit
-- **Node.js**: ESM module system
-- **TypeScript**: Strict mode enabled with path aliases (`@/`, `@shared/`, `@assets/`)
-- **Hot Module Replacement**: Vite HMR for frontend development
-- **Build Output**: 
-  - Frontend: `dist/public`
-  - Backend: `dist/index.js`
+- `vite`, `esbuild`, `tsx`.
