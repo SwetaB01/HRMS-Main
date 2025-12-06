@@ -117,26 +117,20 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
           <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
-                // Hide Payroll for Super Admin if they can't generate payroll
-                if (item.title === "Payroll" && isSuperAdmin) {
-                  return null;
-                }
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <Link href={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={location === "/profile"}>
                   <Link href="/profile">
@@ -155,24 +149,12 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              {isSuperAdmin && ( // Only show Compensation for Super Admin
+              {isSuperAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={location === "/compensation"}>
                     <Link href="/compensation">
                       <DollarSign className="h-4 w-4" />
                       <span>Compensation</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {/* Role-based visibility for salary slip - Assuming this logic is handled elsewhere or dynamically */}
-              {/* For now, if the user is not Super Admin, they can see their own salary slip */}
-              {!isSuperAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/salary-slip"}>
-                    <Link href="/salary-slip">
-                      <DollarSign className="h-4 w-4" />
-                      <span>My Salary Slip</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
