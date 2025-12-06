@@ -14,6 +14,7 @@ import {
   type ReimbursementType, type InsertReimbursementType,
   type Reimbursement, type InsertReimbursement,
   type Payroll, type InsertPayroll,
+  type EmployeeBankDetails, type InsertEmployeeBankDetails,
 } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import { randomUUID } from 'crypto';
@@ -122,6 +123,13 @@ export interface IStorage {
   assignManager(employeeId: string, managerId: string): Promise<UserProfile | undefined>;
   getSubordinates(managerId: string): Promise<UserProfile[]>;
   getHierarchyTree(): Promise<any[]>;
+
+  // Bank Details Operations
+  getBankDetailsByUser(userId: string): Promise<EmployeeBankDetails[]>;
+  getPrimaryBankDetails(userId: string): Promise<EmployeeBankDetails | undefined>;
+  createBankDetails(details: InsertEmployeeBankDetails): Promise<EmployeeBankDetails>;
+  updateBankDetails(id: string, details: Partial<InsertEmployeeBankDetails>): Promise<EmployeeBankDetails | undefined>;
+  deleteBankDetails(id: string): Promise<boolean>;
 }
 
 /* Keeping MemStorage for reference, but now using PostgreSQL */

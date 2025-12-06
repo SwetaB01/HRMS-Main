@@ -321,3 +321,27 @@ export interface PayrollCalculationInput {
   month: number;
   year: number;
 }
+
+// Employee Bank Details Table
+export const employeeBankDetails = pgTable("employee_bank_details", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => userProfiles.id),
+  accountHolderName: text("account_holder_name").notNull(),
+  accountNumber: text("account_number").notNull(),
+  bankName: text("bank_name").notNull(),
+  branchName: text("branch_name"),
+  ifscCode: text("ifsc_code").notNull(),
+  accountType: text("account_type").default("Savings"), // Savings, Current, Salary
+  isPrimary: boolean("is_primary").default(true),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmployeeBankDetailsSchema = createInsertSchema(employeeBankDetails).omit({ 
+  id: true, 
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertEmployeeBankDetails = z.infer<typeof insertEmployeeBankDetailsSchema>;
+export type EmployeeBankDetails = typeof employeeBankDetails.$inferSelect;

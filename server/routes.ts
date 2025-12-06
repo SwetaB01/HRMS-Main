@@ -1318,9 +1318,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Calculate requested leave days
-      const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      // Calculate requested leave days using UTC dates to avoid timezone issues
+      // Parse dates as UTC to ensure consistent calculation
+      const fromUTC = new Date(leaveData.fromDate + 'T00:00:00Z');
+      const toUTC = new Date(leaveData.toDate + 'T00:00:00Z');
+      const daysDiff = Math.floor((toUTC.getTime() - fromUTC.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const requestedDays = leaveData.halfDay ? 0.5 : daysDiff;
+      
+      console.log('Leave days calculation:', {
+        fromDate: leaveData.fromDate,
+        toDate: leaveData.toDate,
+        fromUTC: fromUTC.toISOString(),
+        toUTC: toUTC.toISOString(),
+        daysDiff,
+        requestedDays,
+        halfDay: leaveData.halfDay
+      });
 
       // Check leave balance
       const leaveLedger = await storage.getLeaveLedgerByUser(userId);
@@ -1418,7 +1431,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Update leave ledger - deduct used leaves
         try {
-          const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          // Use UTC parsing for consistent calculation
+          const fromUTC = new Date(leave.fromDate + 'T00:00:00Z');
+          const toUTC = new Date(leave.toDate + 'T00:00:00Z');
+          const daysDiff = Math.floor((toUTC.getTime() - fromUTC.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           const leaveDays = leave.halfDay ? 0.5 : daysDiff;
 
           console.log('Leave status changed to Approved - updating ledger:', {
@@ -1485,9 +1501,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (updateData.status === 'Rejected' && existingLeave.status === 'Approved') {
         // If previously approved leave is now rejected, reverse the leave ledger
         try {
-          const fromDate = new Date(leave.fromDate);
-          const toDate = new Date(leave.toDate);
-          const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          const fromUTC = new Date(leave.fromDate + 'T00:00:00Z');
+          const toUTC = new Date(leave.toDate + 'T00:00:00Z');
+          const daysDiff = Math.floor((toUTC.getTime() - fromUTC.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           const leaveDays = leave.halfDay ? 0.5 : daysDiff;
 
           await storage.updateLeaveLedgerUsage(
@@ -1582,10 +1598,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Calculate leave days BEFORE approval
-      const leaveDaysFromDate = new Date(leave.fromDate);
-      const leaveDaysToDate = new Date(leave.toDate);
-      const daysDiff = Math.ceil((leaveDaysToDate.getTime() - leaveDaysFromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      // Calculate leave days BEFORE approval using UTC to avoid timezone issues
+      const fromUTC = new Date(leave.fromDate + 'T00:00:00Z');
+      const toUTC = new Date(leave.toDate + 'T00:00:00Z');
+      const daysDiff = Math.floor((toUTC.getTime() - fromUTC.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const leaveDays = leave.halfDay ? 0.5 : daysDiff;
 
       console.log('Approving leave - calculated days:', {
@@ -1719,9 +1735,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If the leave was previously approved, restore the leave quota
       if (wasApproved) {
         try {
-          const fromDate = new Date(leave.fromDate);
-          const toDate = new Date(leave.toDate);
-          const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          // Use UTC parsing for consistent calculation
+          const fromUTC = new Date(leave.fromDate + 'T00:00:00Z');
+          const toUTC = new Date(leave.toDate + 'T00:00:00Z');
+          const daysDiff = Math.floor((toUTC.getTime() - fromUTC.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           const leaveDays = leave.halfDay ? 0.5 : daysDiff;
 
           console.log('Restoring leave quota after rejection:', {
@@ -2530,6 +2547,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching my compensation:', error);
       res.status(500).json({ message: "Failed to fetch compensation" });
+    }
+  });
+
+  // Bank Details Routes
+  
+  // Employee self-service - view own bank details
+  app.get("/api/my-bank-details", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const bankDetails = await storage.getBankDetailsByUser(userId);
+      res.json(bankDetails);
+    } catch (error) {
+      console.error('Error fetching bank details:', error);
+      res.status(500).json({ message: "Failed to fetch bank details" });
+    }
+  });
+
+  // Employee self-service - create bank details
+  app.post("/api/my-bank-details", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      // Remove confirmAccountNumber from payload as it's only for validation
+      const { confirmAccountNumber, ...bankData } = req.body;
+      
+      const details = await storage.createBankDetails({
+        ...bankData,
+        userId,
+      });
+      res.status(201).json(details);
+    } catch (error) {
+      console.error('Error creating bank details:', error);
+      res.status(500).json({ message: "Failed to create bank details" });
+    }
+  });
+
+  // Employee self-service - update own bank details
+  app.patch("/api/my-bank-details/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const { id } = req.params;
+      
+      // Verify the bank details belong to the user
+      const existingDetails = await storage.getBankDetailsByUser(userId);
+      const ownsBankDetails = existingDetails.some(d => d.id === id);
+      
+      if (!ownsBankDetails) {
+        return res.status(403).json({ message: "Not authorized to update these bank details" });
+      }
+      
+      // Remove confirmAccountNumber from payload as it's only for validation
+      const { confirmAccountNumber, ...bankData } = req.body;
+      
+      const details = await storage.updateBankDetails(id, bankData);
+      if (!details) {
+        return res.status(404).json({ message: "Bank details not found" });
+      }
+      res.json(details);
+    } catch (error) {
+      console.error('Error updating bank details:', error);
+      res.status(500).json({ message: "Failed to update bank details" });
+    }
+  });
+
+  // Admin - view bank details for an employee
+  app.get("/api/employees/:userId/bank-details", requireAuth, allowRoles(['Admin', 'HR']), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const bankDetails = await storage.getBankDetailsByUser(userId);
+      res.json(bankDetails);
+    } catch (error) {
+      console.error('Error fetching employee bank details:', error);
+      res.status(500).json({ message: "Failed to fetch bank details" });
+    }
+  });
+
+  // Admin - create bank details for an employee
+  app.post("/api/employees/:userId/bank-details", requireAuth, allowRoles(['Admin', 'HR']), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Verify employee exists
+      const employee = await storage.getUserProfile(userId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      // Remove confirmAccountNumber from payload as it's only for validation
+      const { confirmAccountNumber, ...bankData } = req.body;
+      
+      const details = await storage.createBankDetails({
+        ...bankData,
+        userId,
+      });
+      res.status(201).json(details);
+    } catch (error) {
+      console.error('Error creating employee bank details:', error);
+      res.status(500).json({ message: "Failed to create bank details" });
+    }
+  });
+
+  // Admin - update bank details for an employee
+  app.patch("/api/employees/:userId/bank-details/:id", requireAuth, allowRoles(['Admin', 'HR']), async (req, res) => {
+    try {
+      const { userId, id } = req.params;
+      
+      // Verify the bank details belong to this employee
+      const existingDetails = await storage.getBankDetailsByUser(userId);
+      const belongsToEmployee = existingDetails.some(d => d.id === id);
+      
+      if (!belongsToEmployee) {
+        return res.status(404).json({ message: "Bank details not found for this employee" });
+      }
+      
+      // Remove confirmAccountNumber from payload as it's only for validation
+      const { confirmAccountNumber, ...bankData } = req.body;
+      
+      const details = await storage.updateBankDetails(id, bankData);
+      if (!details) {
+        return res.status(404).json({ message: "Bank details not found" });
+      }
+      res.json(details);
+    } catch (error) {
+      console.error('Error updating employee bank details:', error);
+      res.status(500).json({ message: "Failed to update bank details" });
+    }
+  });
+
+  // Admin - delete bank details for an employee
+  app.delete("/api/employees/:userId/bank-details/:id", requireAuth, allowRoles(['Admin', 'HR']), async (req, res) => {
+    try {
+      const { userId, id } = req.params;
+      
+      // Verify the bank details belong to this employee
+      const existingDetails = await storage.getBankDetailsByUser(userId);
+      const belongsToEmployee = existingDetails.some(d => d.id === id);
+      
+      if (!belongsToEmployee) {
+        return res.status(404).json({ message: "Bank details not found for this employee" });
+      }
+      
+      const success = await storage.deleteBankDetails(id);
+      if (!success) {
+        return res.status(404).json({ message: "Bank details not found" });
+      }
+      res.json({ message: "Bank details deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting employee bank details:', error);
+      res.status(500).json({ message: "Failed to delete bank details" });
     }
   });
 

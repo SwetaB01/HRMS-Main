@@ -19,6 +19,7 @@ import {
   payrolls,
   salaryComponents,
   employeeCompensation,
+  employeeBankDetails,
   type UserProfile,
   type InsertUserProfile,
   type UserType,
@@ -49,6 +50,8 @@ import {
   type InsertSalaryComponent,
   type EmployeeCompensation,
   type InsertEmployeeCompensation,
+  type EmployeeBankDetails,
+  type InsertEmployeeBankDetails,
 } from '@shared/schema';
 import type { IStorage } from './storage';
 
@@ -888,5 +891,70 @@ export class PostgresStorage implements IStorage {
     });
 
     return rootNodes;
+  }
+
+  // Bank Details Operations
+  async getBankDetailsByUser(userId: string): Promise<EmployeeBankDetails[]> {
+    return await db.select().from(employeeBankDetails)
+      .where(and(
+        eq(employeeBankDetails.userId, userId),
+        eq(employeeBankDetails.isActive, true)
+      ))
+      .orderBy(desc(employeeBankDetails.isPrimary));
+  }
+
+  async getPrimaryBankDetails(userId: string): Promise<EmployeeBankDetails | undefined> {
+    const result = await db.select().from(employeeBankDetails)
+      .where(and(
+        eq(employeeBankDetails.userId, userId),
+        eq(employeeBankDetails.isPrimary, true),
+        eq(employeeBankDetails.isActive, true)
+      ))
+      .limit(1);
+    return result[0];
+  }
+
+  async createBankDetails(details: InsertEmployeeBankDetails): Promise<EmployeeBankDetails> {
+    // If this is set as primary, unset all other primary flags for this user
+    if (details.isPrimary) {
+      await db.update(employeeBankDetails)
+        .set({ isPrimary: false })
+        .where(eq(employeeBankDetails.userId, details.userId));
+    }
+    
+    const [newDetails] = await db.insert(employeeBankDetails)
+      .values(details)
+      .returning();
+    return newDetails;
+  }
+
+  async updateBankDetails(id: string, details: Partial<InsertEmployeeBankDetails>): Promise<EmployeeBankDetails | undefined> {
+    // If setting as primary, unset all other primary flags for this user
+    if (details.isPrimary) {
+      const existing = await db.select().from(employeeBankDetails)
+        .where(eq(employeeBankDetails.id, id))
+        .limit(1);
+      
+      if (existing[0]) {
+        await db.update(employeeBankDetails)
+          .set({ isPrimary: false })
+          .where(eq(employeeBankDetails.userId, existing[0].userId));
+      }
+    }
+    
+    const [updated] = await db.update(employeeBankDetails)
+      .set({ ...details, updatedAt: new Date() })
+      .where(eq(employeeBankDetails.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBankDetails(id: string): Promise<boolean> {
+    // Soft delete by setting isActive to false
+    const [updated] = await db.update(employeeBankDetails)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(employeeBankDetails.id, id))
+      .returning();
+    return !!updated;
   }
 }

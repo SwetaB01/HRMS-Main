@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
+import { Calendar } from "lucide-react";
 
 const leaveFormSchema = z.object({
   leaveTypeId: z.string().min(1, "Leave type is required"),
@@ -36,6 +38,25 @@ type LeaveFormData = z.infer<typeof leaveFormSchema>;
 
 interface LeaveFormProps {
   onSuccess: () => void;
+}
+
+// Helper function to calculate leave days
+function calculateLeaveDays(fromDate: string, toDate: string, halfDay: boolean): number {
+  if (!fromDate || !toDate) return 0;
+  
+  // Parse dates as local dates (without timezone conversion)
+  const from = new Date(fromDate + 'T00:00:00');
+  const to = new Date(toDate + 'T00:00:00');
+  
+  if (isNaN(from.getTime()) || isNaN(to.getTime())) return 0;
+  if (to < from) return 0;
+  
+  // Calculate difference in days (inclusive of both dates)
+  const diffTime = to.getTime() - from.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  
+  // If half day is checked, only 0.5 days regardless of date range
+  return halfDay ? 0.5 : diffDays;
 }
 
 export function LeaveForm({ onSuccess }: LeaveFormProps) {
@@ -55,6 +76,16 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
       reason: "",
     },
   });
+  
+  // Watch form values for live calculation
+  const watchedFromDate = useWatch({ control: form.control, name: "fromDate" });
+  const watchedToDate = useWatch({ control: form.control, name: "toDate" });
+  const watchedHalfDay = useWatch({ control: form.control, name: "halfDay" });
+  
+  // Calculate leave days based on form values
+  const leaveDays = useMemo(() => {
+    return calculateLeaveDays(watchedFromDate || "", watchedToDate || "", watchedHalfDay || false);
+  }, [watchedFromDate, watchedToDate, watchedHalfDay]);
 
   const handleSubmit = async (data: LeaveFormData) => {
     setIsLoading(true);
@@ -156,6 +187,21 @@ export function LeaveForm({ onSuccess }: LeaveFormProps) {
             )}
           />
         </div>
+
+        {/* Display calculated leave days */}
+        {leaveDays > 0 && (
+          <Card className="bg-muted/50 border-dashed">
+            <CardContent className="flex items-center gap-3 py-3">
+              <Calendar className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <span className="text-sm text-muted-foreground">Number of Days: </span>
+                <span className="font-semibold" data-testid="text-leave-days">
+                  {leaveDays} {leaveDays === 1 ? 'day' : 'days'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <FormField
           control={form.control}
