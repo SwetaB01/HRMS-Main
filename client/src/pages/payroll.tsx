@@ -45,6 +45,7 @@ export default function PayrollPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedPayroll, setSelectedPayroll] = useState<Payroll | null>(null); // Added state for selected payroll
 
   const { data: currentUser, isLoading: isLoadingUser } = useQuery<{
     id: string;
@@ -213,7 +214,7 @@ export default function PayrollPage() {
                   <>
                     {[1, 2, 3, 4, 5].map((i) => (
                       <TableRow key={i}>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        {isSuperAdmin && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                         <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -240,22 +241,23 @@ export default function PayrollPage() {
                         <TableCell className="font-medium">
                           {months[payroll.month - 1]} {payroll.year}
                         </TableCell>
-                        <TableCell>₹{parseFloat(payroll.grossSalary || '0').toFixed(2)}</TableCell>
-                        <TableCell>₹{parseFloat(payroll.pfDeduction || '0').toFixed(2)}</TableCell>
-                        <TableCell>₹{parseFloat(payroll.incomeTax || '0').toFixed(2)}</TableCell>
+                        <TableCell>₹{parseFloat(payroll.grossSalary || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell>₹{parseFloat(payroll.pfDeduction || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell>₹{parseFloat(payroll.incomeTax || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell>
                           {parseFloat(payroll.lopDays || '0')} days
                           <br />
-                          <span className="text-sm text-muted-foreground">₹{parseFloat(payroll.lopAmount || '0').toFixed(2)}</span>
+                          <span className="text-sm text-muted-foreground">₹{parseFloat(payroll.lopAmount || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </TableCell>
-                        <TableCell>₹{parseFloat(payroll.reimbursements || '0').toFixed(2)}</TableCell>
-                        <TableCell className="font-semibold">₹{parseFloat(payroll.netSalary || '0').toFixed(2)}</TableCell>
+                        <TableCell>₹{parseFloat(payroll.reimbursements || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="font-semibold">₹{parseFloat(payroll.netSalary || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell>{getStatusBadge(payroll.status)}</TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="outline"
                             size="sm"
                             data-testid={`button-download-${payroll.id}`}
+                            onClick={() => setSelectedPayroll(payroll)} // Set selected payroll on click
                           >
                             <Download className="h-4 w-4 mr-2" />
                             Payslip
@@ -337,7 +339,7 @@ export default function PayrollPage() {
             <Button variant="outline" onClick={() => setShowGenerateDialog(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleGeneratePayroll}
               disabled={!selectedEmployee || generatePayrollMutation.isPending || generateBulkPayrollMutation.isPending}
             >
@@ -346,6 +348,80 @@ export default function PayrollPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog for displaying selected payroll details */}
+      {selectedPayroll && (
+        <Dialog open={!!selectedPayroll} onOpenChange={() => setSelectedPayroll(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Payroll Details</DialogTitle>
+              <DialogDescription>Details for the selected payroll period.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> All amounts shown are monthly calculations based on annual salary components.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Employee</p>
+                  <p className="font-medium">
+                    {employees?.find(e => e.id === selectedPayroll.userId)?.firstName} {employees?.find(e => e.id === selectedPayroll.userId)?.lastName}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Period</p>
+                  <p className="font-medium">
+                    {new Date(selectedPayroll.year, selectedPayroll.month - 1).toLocaleDateString('en-US', {
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Gross Salary</p>
+                  <p className="font-medium">₹{parseFloat(selectedPayroll.grossSalary || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">PF Deduction</p>
+                  <p className="font-medium">₹{parseFloat(selectedPayroll.pfDeduction || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Income Tax</p>
+                  <p className="font-medium">₹{parseFloat(selectedPayroll.incomeTax || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Reimbursements</p>
+                  <p className="font-medium">₹{parseFloat(selectedPayroll.reimbursements || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">LOP</p>
+                <p className="font-medium">
+                  {parseFloat(selectedPayroll.lopDays || '0')} days
+                  <span className="text-sm text-muted-foreground"> (₹{parseFloat(selectedPayroll.lopAmount || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                </p>
+              </div>
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">Net Salary</p>
+                <p className="font-bold text-lg">₹{parseFloat(selectedPayroll.netSalary || '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </div>
+              <div className="mt-4">
+                <p className="text-sm text-muted-foreground">Status</p>
+                <p className="font-medium">{getStatusBadge(selectedPayroll.status)}</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedPayroll(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

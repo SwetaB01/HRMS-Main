@@ -111,7 +111,7 @@ export class PayrollCalculator {
   }
 
   /**
-   * Get employee compensation breakdown
+   * Get employee compensation breakdown (converts annual to monthly)
    */
   private static async getEmployeeCompensation(userId: string): Promise<{
     basicSalary: number;
@@ -134,15 +134,17 @@ export class PayrollCalculator {
     let deductions = 0;
 
     for (const record of compensationRecords) {
-      const amount = parseFloat(record.employee_compensation.amount);
+      // Annual amount stored in DB, convert to monthly
+      const annualAmount = parseFloat(record.employee_compensation.amount);
+      const monthlyAmount = annualAmount / 12;
       const component = record.salary_components;
       
       if (component.name.toLowerCase().includes('basic')) {
-        basicSalary += amount;
+        basicSalary += monthlyAmount;
       } else if (component.type === 'Earning') {
-        allowances += amount;
+        allowances += monthlyAmount;
       } else if (component.type === 'Deduction') {
-        deductions += amount;
+        deductions += monthlyAmount;
       }
     }
 

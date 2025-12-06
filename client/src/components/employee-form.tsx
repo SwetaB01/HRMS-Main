@@ -603,7 +603,7 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="text-sm font-medium mb-1 block">Amount</label>
+                      <label className="text-sm font-medium mb-1 block">Annual Amount</label>
                       <Input
                         type="number"
                         placeholder="0.00"
@@ -614,6 +614,11 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
                           setSalaryComponents(updated);
                         }}
                       />
+                      {component.amount && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Monthly: ₹{(parseFloat(component.amount) / 12).toFixed(2)}
+                        </p>
+                      )}
                     </div>
                     <Button
                       type="button"
@@ -634,7 +639,7 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
 
             {salaryComponents.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">
-                No salary components added. Click "Add Component" to define the employee's salary structure.
+                No salary components added. Click "Add Component" to define the employee's salary structure (annual amounts).
               </p>
             )}
           </div>

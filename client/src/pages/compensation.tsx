@@ -305,6 +305,22 @@ export default function CompensationPage() {
         </CardContent>
       </Card>
 
+      {/* Employee Compensation Section - Only for Super Admin */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Employee Compensation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            View and manage individual employee salary structures. All amounts are stored as annual values and calculated monthly for payroll.
+          </p>
+          <div className="text-center text-muted-foreground py-8">
+            This feature allows you to view employee compensation details.
+            Salary components are defined during employee creation as annual amounts.
+          </div>
+        </CardContent>
+      </Card>
+
       <Dialog open={isComponentDialogOpen} onOpenChange={setIsComponentDialogOpen}>
         <DialogContent>
           <DialogHeader>
