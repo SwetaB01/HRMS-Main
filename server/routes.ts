@@ -2429,6 +2429,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // My Compensation Route - Employees can view their own compensation
+  app.get("/api/my-compensation", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const compensation = await storage.getEmployeeCompensation(userId);
+      const components = await storage.getAllSalaryComponents();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Normalize to start of day
+      
+      // Helper function to compare dates at day precision
+      const parseDate = (dateStr: string | null | undefined): Date | null => {
+        if (!dateStr) return null;
+        const d = new Date(dateStr);
+        d.setHours(0, 0, 0, 0);
+        return isNaN(d.getTime()) ? null : d;
+      };
+      
+      // Filter for active compensation records within effective date range
+      const activeCompensation = compensation.filter(comp => {
+        // Check if isActive is truthy (handles boolean, string "true", or 1)
+        if (!Boolean(comp.isActive)) return false;
+        
+        // Check effective from date (must be on or before today)
+        const fromDate = parseDate(comp.effectiveFrom);
+        if (fromDate && fromDate > today) return false;
+        
+        // Check effective to date (must be on or after today if set)
+        const toDate = parseDate(comp.effectiveTo);
+        if (toDate && toDate < today) return false;
+        
+        return true;
+      });
+      
+      // Type for valid compensation with details
+      interface CompensationWithDetails {
+        id: string;
+        userId: string;
+        componentId: string;
+        amount: string;
+        effectiveFrom: string;
+        effectiveTo: string | null;
+        isActive: boolean | null;
+        createdAt: Date | null;
+        componentName: string;
+        componentType: string;
+        annualAmount: number;
+        monthlyAmount: number;
+      }
+      
+      // Combine compensation with component details and calculate monthly amounts
+      // Only include components with valid salary component metadata
+      const compensationWithDetails: CompensationWithDetails[] = activeCompensation
+        .map(comp => {
+          const component = components.find(c => c.id === comp.componentId);
+          
+          // Skip if component metadata is missing or inactive
+          if (!component || !Boolean(component.isActive)) {
+            return null;
+          }
+          
+          const annualAmount = parseFloat(comp.amount) || 0;
+          const monthlyAmount = annualAmount / 12;
+          
+          return {
+            ...comp,
+            componentName: component.name,
+            componentType: component.type,
+            annualAmount,
+            monthlyAmount: Math.round(monthlyAmount * 100) / 100
+          } as CompensationWithDetails;
+        })
+        .filter((comp): comp is CompensationWithDetails => comp !== null);
+      
+      // Calculate totals only from valid, active components
+      // Earnings are positive, Deductions are tracked separately (as positive numbers)
+      const totalAnnualEarnings = compensationWithDetails
+        .filter(c => c.componentType === 'Earning')
+        .reduce((sum, c) => sum + c.annualAmount, 0);
+      
+      const totalAnnualDeductions = compensationWithDetails
+        .filter(c => c.componentType === 'Deduction')
+        .reduce((sum, c) => sum + c.annualAmount, 0);
+      
+      res.json({
+        components: compensationWithDetails,
+        summary: {
+          totalAnnualEarnings,
+          totalAnnualDeductions,
+          totalAnnualSalary: totalAnnualEarnings - totalAnnualDeductions,
+          totalMonthlyEarnings: Math.round((totalAnnualEarnings / 12) * 100) / 100,
+          totalMonthlyDeductions: Math.round((totalAnnualDeductions / 12) * 100) / 100,
+          totalMonthlySalary: Math.round(((totalAnnualEarnings - totalAnnualDeductions) / 12) * 100) / 100
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching my compensation:', error);
+      res.status(500).json({ message: "Failed to fetch compensation" });
+    }
+  });
+
   // Company Routes - All authenticated users can view
   app.get("/api/company", requireAuth, async (req, res) => {
     try {

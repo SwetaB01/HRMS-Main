@@ -26,8 +26,41 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { IndianRupee, Calendar } from "lucide-react";
+
+interface CompensationComponent {
+  id: string;
+  componentName: string;
+  componentType: string;
+  annualAmount: number;
+  monthlyAmount: number;
+  effectiveFrom: string;
+}
+
+interface CompensationData {
+  components: CompensationComponent[];
+  summary: {
+    totalAnnualEarnings: number;
+    totalAnnualDeductions: number;
+    totalAnnualSalary: number;
+    totalMonthlyEarnings: number;
+    totalMonthlyDeductions: number;
+    totalMonthlySalary: number;
+  };
+}
 
 const profileFormSchema = z.object({
   street: z.string().optional(),
@@ -44,6 +77,12 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const { toast } = useToast();
+
+  // Fetch employee's own compensation data
+  const { data: compensationData, isLoading: isLoadingCompensation } = useQuery<CompensationData>({
+    queryKey: ["/api/my-compensation"],
+    enabled: !!currentUser?.id,
+  });
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
@@ -309,6 +348,107 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* My Salary Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <IndianRupee className="h-5 w-5" />
+            My Salary
+          </CardTitle>
+          <CardDescription>
+            View your salary breakdown. All amounts are defined as annual values and calculated monthly for payroll.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingCompensation ? (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : compensationData && compensationData.components.length > 0 ? (
+            <div className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 rounded-md bg-muted/50">
+                  <p className="text-sm text-muted-foreground">Annual CTC</p>
+                  <p className="text-2xl font-bold" data-testid="text-annual-salary">
+                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(compensationData.summary.totalAnnualSalary)}
+                  </p>
+                </div>
+                <div className="p-4 rounded-md bg-muted/50">
+                  <p className="text-sm text-muted-foreground">Monthly Gross</p>
+                  <p className="text-2xl font-bold" data-testid="text-monthly-salary">
+                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(compensationData.summary.totalMonthlySalary)}
+                  </p>
+                </div>
+                <div className="p-4 rounded-md bg-muted/50">
+                  <p className="text-sm text-muted-foreground">Monthly Deductions</p>
+                  <p className="text-2xl font-bold text-destructive" data-testid="text-monthly-deductions">
+                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(compensationData.summary.totalMonthlyDeductions)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Component Breakdown Table */}
+              <div>
+                <h4 className="font-semibold mb-3">Salary Components</h4>
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Component</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="text-right">Annual Amount</TableHead>
+                        <TableHead className="text-right">Monthly Amount</TableHead>
+                        <TableHead>Effective From</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {compensationData.components.map((component) => (
+                        <TableRow key={component.id} data-testid={`row-compensation-${component.id}`}>
+                          <TableCell className="font-medium">{component.componentName}</TableCell>
+                          <TableCell>
+                            <Badge variant={component.componentType === 'Earning' ? 'default' : 'secondary'}>
+                              {component.componentType}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(component.annualAmount)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(component.monthlyAmount)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(component.effectiveFrom).toLocaleDateString()}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Note about payroll */}
+              <div className="p-4 rounded-md bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>Note:</strong> Your actual monthly payslip may vary based on attendance, leaves, reimbursements, PF contributions, and income tax deductions. View the Payroll section for detailed monthly salary slips.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <IndianRupee className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No salary components have been assigned yet.</p>
+              <p className="text-sm mt-2">Contact HR if you believe this is an error.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
