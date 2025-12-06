@@ -215,6 +215,19 @@ export class PostgresStorage implements IStorage {
   }
 
   async approveLeave(id: string, managerId: string, comments?: string): Promise<Leave | undefined> {
+    // Get the leave details first
+    const [leave] = await db.select().from(leaves).where(eq(leaves.id, id)).limit(1);
+    
+    if (!leave) {
+      return undefined;
+    }
+
+    // Check if already approved
+    if (leave.status === 'Approved') {
+      throw new Error('Leave is already approved');
+    }
+
+    // Update leave status
     const [updatedLeave] = await db.update(leaves)
       .set({
         status: 'Approved',
@@ -224,57 +237,53 @@ export class PostgresStorage implements IStorage {
       .where(eq(leaves.id, id))
       .returning();
 
-    if (updatedLeave) {
+    if (updatedLeave && updatedLeave.fromDate && updatedLeave.toDate && updatedLeave.userId) {
       // Create attendance entries for the leave period
-      const leaveDetails = await db.query.leaves.findFirst({
-        where: eq(leaves.id, id),
-        with: {
-          leaveType: true,
-        },
-      });
+      let currentDate = new Date(updatedLeave.fromDate);
+      const endDate = new Date(updatedLeave.toDate);
 
-      if (leaveDetails && leaveDetails.startDate && leaveDetails.endDate && leaveDetails.userId) {
-        let currentDate = new Date(leaveDetails.startDate);
-        const endDate = new Date(leaveDetails.endDate);
+      while (currentDate <= endDate) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        
+        // Check if attendance already exists for this date
+        const existingAttendance = await db.select().from(attendance).where(
+          and(
+            eq(attendance.userId, updatedLeave.userId),
+            eq(attendance.attendanceDate, dateStr)
+          )
+        ).limit(1);
 
-        while (currentDate <= endDate) {
-          const dateStr = currentDate.toISOString().split('T')[0];
-          // Check if attendance already exists for this date
-          const existingAttendance = await db.select().from(attendance).where(
-            and(
-              eq(attendance.userId, leaveDetails.userId),
-              eq(attendance.attendanceDate, dateStr)
-            )
-          ).limit(1);
-
-          // If no attendance record exists for this date, create one with 'On Leave' status
-          if (existingAttendance.length === 0) {
-            await db.insert(attendance).values({
-              userId: leaveDetails.userId,
-              attendanceDate: dateStr,
+        // If no attendance record exists for this date, create one with 'On Leave' status
+        if (existingAttendance.length === 0) {
+          await db.insert(attendance).values({
+            userId: updatedLeave.userId,
+            attendanceDate: dateStr,
+            status: 'On Leave',
+            leaveTypeId: updatedLeave.leaveTypeId,
+            checkIn: null,
+            checkOut: null,
+            totalDuration: updatedLeave.halfDay ? '4' : '8',
+            earlySignIn: false,
+            earlySignOut: false,
+            lateSignIn: false,
+            lateSignOut: false,
+            regularizationRequested: false,
+            regularizationStatus: null,
+          });
+        } else {
+          // If attendance exists, update it to 'On Leave' if it's not already
+          await db.update(attendance)
+            .set({ 
               status: 'On Leave',
-              checkIn: null,
-              checkOut: null,
-              totalDuration: null,
-              earlySignIn: false,
-              earlySignOut: false,
-              lateSignIn: false,
-              lateSignOut: false,
-              regularizationRequested: false,
-              regularizationStatus: null,
-              managerComments: 'Leave approved automatically',
-            });
-          } else {
-            // If attendance exists, update it to 'On Leave' if it's not already
-            await db.update(attendance)
-              .set({ status: 'On Leave' })
-              .where(and(
-                eq(attendance.userId, leaveDetails.userId),
-                eq(attendance.attendanceDate, dateStr)
-              ));
-          }
-          currentDate.setDate(currentDate.getDate() + 1);
+              leaveTypeId: updatedLeave.leaveTypeId,
+              totalDuration: updatedLeave.halfDay ? '4' : '8'
+            })
+            .where(and(
+              eq(attendance.userId, updatedLeave.userId),
+              eq(attendance.attendanceDate, dateStr)
+            ));
         }
+        currentDate.setDate(currentDate.getDate() + 1);
       }
     }
 
