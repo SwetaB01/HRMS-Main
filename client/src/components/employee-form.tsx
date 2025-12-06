@@ -20,10 +20,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserProfile, Department, UserRole } from "@shared/schema";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, CreditCard, Building, Edit2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+interface BankDetails {
+  id: string;
+  accountHolderName: string;
+  accountNumber: string;
+  bankName: string;
+  branchName: string | null;
+  ifscCode: string;
+  accountType: string | null;
+  isPrimary: boolean | null;
+}
 
 const employeeFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -56,6 +78,23 @@ interface EmployeeFormProps {
   onSuccess: () => void;
 }
 
+// Bank details form schema
+const bankDetailsFormSchema = z.object({
+  accountHolderName: z.string().min(1, "Account holder name is required"),
+  accountNumber: z.string().min(9, "Account number must be at least 9 digits").max(18, "Account number must be at most 18 digits"),
+  confirmAccountNumber: z.string().min(9, "Please confirm account number"),
+  bankName: z.string().min(1, "Bank name is required"),
+  branchName: z.string().optional(),
+  ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code format (e.g., SBIN0001234)"),
+  accountType: z.string().default("Savings"),
+  isPrimary: z.boolean().default(true),
+}).refine((data) => data.accountNumber === data.confirmAccountNumber, {
+  message: "Account numbers do not match",
+  path: ["confirmAccountNumber"],
+});
+
+type BankDetailsFormData = z.infer<typeof bankDetailsFormSchema>;
+
 export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(employee?.photo || null);
@@ -63,6 +102,9 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
     componentId: string;
     amount: string;
   }>>([]);
+  const [bankDialogOpen, setBankDialogOpen] = useState(false);
+  const [editingBankDetails, setEditingBankDetails] = useState<BankDetails | null>(null);
+  const [savingBankDetails, setSavingBankDetails] = useState(false);
   const { toast } = useToast();
 
   const { data: departments } = useQuery<Department[]>({
@@ -76,6 +118,101 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
   const { data: availableComponents } = useQuery<any[]>({
     queryKey: ["/api/salary-components"],
   });
+
+  // Fetch bank details for existing employee
+  const { data: bankDetails, isLoading: isLoadingBankDetails } = useQuery<BankDetails[]>({
+    queryKey: ["/api/employees", employee?.id, "bank-details"],
+    enabled: !!employee?.id,
+  });
+
+  const bankForm = useForm<BankDetailsFormData>({
+    resolver: zodResolver(bankDetailsFormSchema),
+    defaultValues: {
+      accountHolderName: "",
+      accountNumber: "",
+      confirmAccountNumber: "",
+      bankName: "",
+      branchName: "",
+      ifscCode: "",
+      accountType: "Savings",
+      isPrimary: true,
+    },
+  });
+
+  const handleBankDetailsSubmit = async (data: BankDetailsFormData) => {
+    if (!employee?.id) return;
+    
+    setSavingBankDetails(true);
+    try {
+      const payload = {
+        accountHolderName: data.accountHolderName,
+        accountNumber: data.accountNumber,
+        confirmAccountNumber: data.confirmAccountNumber,
+        bankName: data.bankName,
+        branchName: data.branchName || null,
+        ifscCode: data.ifscCode.toUpperCase(),
+        accountType: data.accountType,
+        isPrimary: data.isPrimary,
+      };
+
+      if (editingBankDetails) {
+        await apiRequest("PATCH", `/api/employees/${employee.id}/bank-details/${editingBankDetails.id}`, payload);
+        toast({
+          title: "Bank details updated",
+          description: "Employee bank details have been updated successfully.",
+        });
+      } else {
+        await apiRequest("POST", `/api/employees/${employee.id}/bank-details`, payload);
+        toast({
+          title: "Bank details added",
+          description: "Employee bank details have been added successfully.",
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/employees", employee.id, "bank-details"] });
+      setBankDialogOpen(false);
+      setEditingBankDetails(null);
+      bankForm.reset();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save bank details",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingBankDetails(false);
+    }
+  };
+
+  const openEditBankDialog = (details: BankDetails) => {
+    setEditingBankDetails(details);
+    bankForm.reset({
+      accountHolderName: details.accountHolderName,
+      accountNumber: details.accountNumber,
+      confirmAccountNumber: details.accountNumber,
+      bankName: details.bankName,
+      branchName: details.branchName || "",
+      ifscCode: details.ifscCode,
+      accountType: details.accountType || "Savings",
+      isPrimary: details.isPrimary ?? true,
+    });
+    setBankDialogOpen(true);
+  };
+
+  const openAddBankDialog = () => {
+    setEditingBankDetails(null);
+    bankForm.reset({
+      accountHolderName: employee ? `${employee.firstName} ${employee.lastName || ''}`.trim() : "",
+      accountNumber: "",
+      confirmAccountNumber: "",
+      bankName: "",
+      branchName: "",
+      ifscCode: "",
+      accountType: "Savings",
+      isPrimary: true,
+    });
+    setBankDialogOpen(true);
+  };
 
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeFormSchema),
@@ -640,6 +777,248 @@ export function EmployeeForm({ employee, onSuccess }: EmployeeFormProps) {
             {salaryComponents.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">
                 No salary components added. Click "Add Component" to define the employee's salary structure (annual amounts).
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Bank Details Section - Only for existing employees */}
+        {employee && (
+          <div className="space-y-4 border-t pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Bank Details
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Manage bank account details for salary payment
+                </p>
+              </div>
+              <Dialog open={bankDialogOpen} onOpenChange={setBankDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={openAddBankDialog}
+                    data-testid="button-add-bank-details-admin"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Bank Account
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingBankDetails ? "Edit Bank Details" : "Add Bank Account"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {editingBankDetails 
+                        ? "Update bank account information."
+                        : "Add a new bank account for this employee."}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Form {...bankForm}>
+                    <form onSubmit={bankForm.handleSubmit(handleBankDetailsSubmit)} className="space-y-4">
+                      <FormField
+                        control={bankForm.control}
+                        name="accountHolderName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Account Holder Name *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Full name as per bank records" 
+                                data-testid="input-account-holder-admin"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={bankForm.control}
+                        name="bankName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bank Name *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="e.g., State Bank of India" 
+                                data-testid="input-bank-name-admin"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={bankForm.control}
+                        name="branchName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Branch Name</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="e.g., Jaipur Main Branch" 
+                                data-testid="input-branch-name-admin"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={bankForm.control}
+                        name="accountNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Account Number *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="password"
+                                placeholder="Enter account number" 
+                                data-testid="input-account-number-admin"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={bankForm.control}
+                        name="confirmAccountNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm Account Number *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Re-enter account number" 
+                                data-testid="input-confirm-account-number-admin"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={bankForm.control}
+                        name="ifscCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>IFSC Code *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="e.g., SBIN0001234" 
+                                className="uppercase"
+                                data-testid="input-ifsc-code-admin"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={bankForm.control}
+                        name="accountType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Account Type</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-account-type-admin">
+                                  <SelectValue placeholder="Select account type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Savings">Savings Account</SelectItem>
+                                <SelectItem value="Current">Current Account</SelectItem>
+                                <SelectItem value="Salary">Salary Account</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex justify-end gap-2 pt-4">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => {
+                            setBankDialogOpen(false);
+                            setEditingBankDetails(null);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={savingBankDetails} data-testid="button-save-bank-details-admin">
+                          {savingBankDetails ? "Saving..." : editingBankDetails ? "Update" : "Add Account"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {isLoadingBankDetails ? (
+              <div className="space-y-3">
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : bankDetails && bankDetails.length > 0 ? (
+              <div className="space-y-3">
+                {bankDetails.map((details) => (
+                  <div 
+                    key={details.id} 
+                    className="flex items-center justify-between p-3 rounded-md border"
+                    data-testid={`card-bank-details-admin-${details.id}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-md bg-muted">
+                        <Building className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{details.bankName}</p>
+                          {details.isPrimary && (
+                            <Badge variant="secondary" className="text-xs">Primary</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          A/C: XXXX{details.accountNumber.slice(-4)} | IFSC: {details.ifscCode}
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => openEditBankDialog(details)}
+                      data-testid={`button-edit-bank-admin-${details.id}`}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">
+                No bank details added. Click "Add Bank Account" to add bank account details for salary payment.
               </p>
             )}
           </div>

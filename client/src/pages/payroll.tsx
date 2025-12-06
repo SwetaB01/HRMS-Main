@@ -36,6 +36,21 @@ interface Employee {
   id: string;
   firstName: string;
   lastName: string;
+  email: string;
+  joiningDate?: string;
+  departmentId?: string;
+  department?: {
+    id: string;
+    name: string;
+  };
+  grade?: string;
+  payGroup?: string;
+  status?: string;
+}
+
+interface Department {
+  id: string;
+  name: string;
 }
 
 export default function PayrollPage() {
@@ -63,6 +78,10 @@ export default function PayrollPage() {
   const { data: employees } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
     enabled: currentUser?.accessLevel === 'Admin',
+  });
+
+  const { data: departments } = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
   });
 
   const { data: payrolls, isLoading } = useQuery<Payroll[]>({
@@ -350,34 +369,69 @@ export default function PayrollPage() {
       </Dialog>
 
       {/* Dialog for displaying selected payroll details */}
-      {selectedPayroll && (
+      {selectedPayroll && (() => {
+        const employee = employees?.find(e => e.id === selectedPayroll.userId);
+        const dept = employee?.departmentId 
+          ? departments?.find(d => d.id === employee.departmentId)
+          : null;
+        
+        return (
         <Dialog open={!!selectedPayroll} onOpenChange={() => setSelectedPayroll(null)}>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Payroll Details</DialogTitle>
-              <DialogDescription>Details for the selected payroll period.</DialogDescription>
+              <DialogTitle>Salary Slip</DialogTitle>
+              <DialogDescription>
+                {new Date(selectedPayroll.year, selectedPayroll.month - 1).toLocaleDateString('en-US', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> All amounts shown are monthly calculations based on annual salary components.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Employee</p>
-                  <p className="font-medium">
-                    {employees?.find(e => e.id === selectedPayroll.userId)?.firstName} {employees?.find(e => e.id === selectedPayroll.userId)?.lastName}
-                  </p>
+              {/* Employee Details Section */}
+              <div className="bg-muted/50 rounded-md p-4 space-y-3">
+                <h4 className="font-semibold text-sm">Employee Details</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Name</p>
+                    <p className="font-medium">{employee?.firstName} {employee?.lastName}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Employee ID</p>
+                    <p className="font-medium">{selectedPayroll.userId.slice(0, 8).toUpperCase()}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Department</p>
+                    <p className="font-medium">{dept?.name || 'Not Assigned'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Date of Joining</p>
+                    <p className="font-medium">
+                      {employee?.joiningDate 
+                        ? new Date(employee.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                        : 'Not Set'}
+                    </p>
+                  </div>
+                  {employee?.grade && (
+                    <div>
+                      <p className="text-muted-foreground">Grade</p>
+                      <p className="font-medium">{employee.grade}</p>
+                    </div>
+                  )}
+                  {employee?.payGroup && (
+                    <div>
+                      <p className="text-muted-foreground">Pay Group</p>
+                      <p className="font-medium">{employee.payGroup}</p>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Period</p>
-                  <p className="font-medium">
-                    {new Date(selectedPayroll.year, selectedPayroll.month - 1).toLocaleDateString('en-US', {
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </p>
+              </div>
+
+              {/* Salary Details Section */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-sm">Salary Details</h4>
+                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-2 text-xs text-blue-800 dark:text-blue-200">
+                  All amounts are monthly calculations based on annual salary components.
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -421,7 +475,8 @@ export default function PayrollPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      )}
+      );
+      })()}
     </div>
   );
 }

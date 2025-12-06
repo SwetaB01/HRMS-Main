@@ -2279,6 +2279,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "userId, month, and year are required" });
       }
 
+      // Check if employee has compensation/CTC setup
+      const compensation = await storage.getEmployeeCompensation(userId);
+      if (!compensation || compensation.length === 0) {
+        return res.status(400).json({ 
+          message: "Cannot generate payroll: Employee does not have salary/CTC setup. Please configure salary components first."
+        });
+      }
+
+      // Check if employee has bank details
+      const bankDetails = await storage.getBankDetailsByUser(userId);
+      if (!bankDetails || bankDetails.length === 0) {
+        return res.status(400).json({ 
+          message: "Cannot generate payroll: Employee does not have bank details. Please add bank details first."
+        });
+      }
+
       const { PayrollCalculator } = await import('./payroll-calculator');
       const payroll = await PayrollCalculator.generatePayroll(userId, month, year);
 
@@ -2304,9 +2320,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { PayrollCalculator } = await import('./payroll-calculator');
       const results = [];
       const errors = [];
+      const skipped = [];
 
       for (const employee of activeEmployees) {
         try {
+          // Check if employee has compensation/CTC setup
+          const compensation = await storage.getEmployeeCompensation(employee.id);
+          if (!compensation || compensation.length === 0) {
+            skipped.push({
+              employeeId: employee.id,
+              employeeName: `${employee.firstName} ${employee.lastName}`,
+              reason: 'No salary/CTC setup'
+            });
+            continue;
+          }
+
+          // Check if employee has bank details
+          const bankDetails = await storage.getBankDetailsByUser(employee.id);
+          if (!bankDetails || bankDetails.length === 0) {
+            skipped.push({
+              employeeId: employee.id,
+              employeeName: `${employee.firstName} ${employee.lastName}`,
+              reason: 'No bank details'
+            });
+            continue;
+          }
+
           const payroll = await PayrollCalculator.generatePayroll(employee.id, month, year);
           results.push(payroll);
         } catch (error: any) {
@@ -2322,8 +2361,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Generated ${results.length} payrolls successfully`,
         successCount: results.length,
         errorCount: errors.length,
+        skippedCount: skipped.length,
         results,
-        errors
+        errors,
+        skipped
       });
     } catch (error: any) {
       console.error('Bulk payroll generation error:', error);
